@@ -1,0 +1,13 @@
+---
+title: "SURV 727 Project"
+author: "Talia Kaatz and Chris Brehm"
+date: "12/7/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Initializing project in github and rmarkdown file
+
