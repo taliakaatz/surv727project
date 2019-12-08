@@ -15,6 +15,7 @@ library(DBI)
 library(dbplyr)
 library(bigrquery)
 library(sf)
+library(magrittr)
 
 ```
 
@@ -33,7 +34,7 @@ nhood_rv <- read_csv("https://raw.githubusercontent.com/taliakaatz/surv727projec
 ```
 
 
-subset data to metro area (county level) and baltimore city (neighborhood level) and reshape to long format with full date, year, and month variables
+subset data to metro area (county level) and baltimore city (neighborhood level) and reshape to long format with full date, year, and month variables. also clean some superfluous variables
 
 
 
@@ -74,10 +75,11 @@ HVbmore <-
 ```
 
 
-begin exploring data visualizations
+begin exploring data visualizations -- work in progress
 
 ```{r}
 
+#line plot of home values in baltimore city over the course of 2018, broken out by neighborhood
 HVbmore %>%
   filter(year == "2018") %>%
   ggplot() +
@@ -85,14 +87,15 @@ HVbmore %>%
 
 
 
-
 ```
 
 
-first attempts at mapping visualizations
+first attempts at mapping visualizations -- work in progress
 
 
 ```{r}
+
+#pull MD county map data from 'maps' package
 md_map <- map_data("county", region = "maryland")
 
 #map filling MD counties by average rental values in Jan 2019
@@ -121,24 +124,64 @@ county_hv %>%
     ggplot() + 
       geom_polygon(aes(x = long, y = lat, group = group, fill = HomeValue))
 
-    
+
+#read in shapefile as a "simple feature"    
 bmore_sf <- st_read("/Users/taliakaatz/Desktop/Computation & Data Display/Project Folder/baltimore city shape files/Maryland_Baltimore_City_Neighborhoods.shp")
 
+#plot each aspect of shapefile
 plot(bmore_sf)
 
-sf1 <- bmore_sf[1,]
-sf1 <- st_cast(sf1, "POINT")
-st_write(sf1, "/Users/taliakaatz/Desktop/Computation & Data Display/Project Folder/baltimore city shape files/geo baltimore city.csv", layer_options = "GEOMETRY=AS_XY")
+##attempted to extract long/lat coordinates as X,Y values to append to zillow data and use in ggplot, was not successful
+#sf1 <- bmore_sf[1,]
+#sf1 <- st_cast(sf1, "POINT")
+#st_write(sf1, "/Users/taliakaatz/Desktop/Computation & Data Display/Project Folder/baltimore city shape files/geo baltimore city.csv", layer_options = "GEOMETRY=AS_XY")
   
-bmore_map <- read.csv("/Users/taliakaatz/Desktop/Computation & Data Display/Project Folder/baltimore city shape files/geo baltimore city.csv")
+#bmore_map <- read.csv("/Users/taliakaatz/Desktop/Computation & Data Display/Project Folder/baltimore city shape files/geo baltimore city.csv")
 
+#clean neighborhood names 
+
+RVbmore %<>% 
+  mutate(NHOOD = trimws(toupper(RegionName)))
+
+bmore_sf %<>%
+  mutate(NHOOD = trimws(toupper(LABEL)))
+
+#check the shapefile names against the zillow names
+
+hoodnames <- unique(RVbmore$NHOOD)
+hoodnames[!(hoodnames %in% bmore_sf$NHOOD)]
+
+othhoodnames <- unique(bmore_sf$NHOOD)
+othhoodnames[!(othhoodnames %in% RVbmore$NHOOD)]
+
+#adjust non-matches (zillow neighborhood names not matched to any in shaefile) as necessary and check results
+
+RVbmore %<>%
+  mutate(NHOOD = gsub("COPPIN HEIGHTS - ASH-CO-EAST", "COPPIN HEIGHTS/ASH-CO-EAST", NHOOD)) %>%
+  mutate(NHOOD = gsub("ELLWOOD PARK-MONUMENT", "ELLWOOD PARK/MONUMENT", NHOOD)) %>%
+  mutate(NHOOD = gsub("GLENHAM-BELFORD", "GLENHAM-BELHAR", NHOOD)) %>%
+  mutate(NHOOD = gsub("MONDAWIN", "MONDAWMIN", NHOOD)) %>%
+  mutate(NHOOD = gsub("NEW SOUTHWEST - MOUNT CLARE", "NEW SOUTHWEST/MOUNT CLARE", NHOOD)) %>%
+  mutate(NHOOD = gsub("PENROSE-FAYETTE STREET OUTREACH", "PENROSE/FAYETTE STREET OUTREACH", NHOOD)) %>%
+  mutate(NHOOD = gsub("SBIC", "SOUTH BALTIMORE", NHOOD)) %>%
+  mutate(NHOOD = gsub("WASHINGTON VILLAGE", "WASHINGTON VILLAGE/PIGTOWN", NHOOD)) %>%
+  mutate(NHOOD = gsub("WOODRING", "WESTFIELD", NHOOD))
+
+hoodnames <- unique(RVbmore$NHOOD)
+hoodnames[!(hoodnames %in% bmore_sf$NHOOD)]
+##based on output, still need to resolve "HARFORD-ECHODALE - PERRING PARKWAY" -- need to determine which neighborhood that area falls under in shapefile
+
+##examples of how to plot a single attribute of shapefile using 'plot' and 'ggplot', other output specifications (fill, etc.) can be added -- neither of these display useful info yet, they just color-code each neighborhood individually by the neighborhood name
+
+#using plot
+plot(bmore_sf['LABEL'])
+
+#using ggplot
 bmore_sf %>%
+  ggplot() +
+    geom_sf(aes(fill = LABEL), show.legend = FALSE)
   
-  left_join()
-hoodnames <- unique(trimws(toupper(RVbmore$RegionName)))
-RVbmore$Name <- trimws(toupper(RVbmore$RegionName))
-bmore_sf$LABEL <- trimws(toupper(bmore_sf$LABEL))
-hoodnames[!(hoodnames %in% trimws(toupper(bmore_sf$LABEL)))]
-plot(bmore_sf['ACRES'])
+
+
 ```
 
