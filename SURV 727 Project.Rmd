@@ -11,6 +11,10 @@ knitr::opts_chunk$set(echo = TRUE)
 library(tidyverse)
 library(readr)
 library(knitr)
+library(DBI)
+library(dbplyr)
+library(bigrquery)
+library(sf)
 
 ```
 
@@ -18,7 +22,7 @@ library(knitr)
 
 read in data from git repository
 
-```{r}
+```{r, import data}
 
 county_hv <- read_csv("https://raw.githubusercontent.com/taliakaatz/surv727project/master/county%20HV.csv")
 county_rv <- read_csv("https://raw.githubusercontent.com/taliakaatz/surv727project/master/county%20RV.csv")
@@ -31,7 +35,9 @@ nhood_rv <- read_csv("https://raw.githubusercontent.com/taliakaatz/surv727projec
 
 subset data to metro area (county level) and baltimore city (neighborhood level) and reshape to long format with full date, year, and month variables
 
-```{r}
+
+
+```{r, preprocess zillow data}
 
 RVmetro <- 
   county_rv %>% 
@@ -65,5 +71,74 @@ HVbmore <-
     separate(date, into = c("year", "month"), sep = "-", remove = FALSE) %>%
     arrange(RegionName, desc(date))
 
+```
+
+
+begin exploring data visualizations
+
+```{r}
+
+HVbmore %>%
+  filter(year == "2018") %>%
+  ggplot() +
+  geom_line(aes(x = month, y = HomeValue, group = RegionName, color = HomeValue))
+
+
+
+
+```
+
+
+first attempts at mapping visualizations
+
+
+```{r}
+md_map <- map_data("county", region = "maryland")
+
+#map filling MD counties by average rental values in Jan 2019
+county_rv %>% 
+    filter(State %in% "MD") %>%
+    gather(key = "date", value = "RentalValue", 8:117) %>%
+    select(- State, -StateCodeFIPS) %>%
+    separate(date, into = c("year", "month"), sep = "-", remove = FALSE) %>%
+    mutate(subregion = gsub(" County", "", RegionName)) %>%
+    mutate(subregion = tolower(subregion)) %>%
+    right_join(md_map, by = "subregion") %>%
+    filter(date == "2019-01") %>%
+    ggplot() + 
+      geom_polygon(aes(x = long, y = lat, group = group, fill = RentalValue))
+
+#map filling MD counties by average home values in Jan 2019
+county_hv %>% 
+    filter(State %in% "MD") %>%
+    gather(key = "date", value = "HomeValue", 8:290) %>%
+    select(- State, -StateCodeFIPS) %>%
+    separate(date, into = c("year", "month"), sep = "-", remove = FALSE) %>%
+    mutate(subregion = gsub(" County", "", RegionName)) %>%
+    mutate(subregion = tolower(subregion)) %>%
+    right_join(md_map, by = "subregion") %>%
+    filter(date == "2019-01") %>%
+    ggplot() + 
+      geom_polygon(aes(x = long, y = lat, group = group, fill = HomeValue))
+
+    
+bmore_sf <- st_read("/Users/taliakaatz/Desktop/Computation & Data Display/Project Folder/baltimore city shape files/Maryland_Baltimore_City_Neighborhoods.shp")
+
+plot(bmore_sf)
+
+sf1 <- bmore_sf[1,]
+sf1 <- st_cast(sf1, "POINT")
+st_write(sf1, "/Users/taliakaatz/Desktop/Computation & Data Display/Project Folder/baltimore city shape files/geo baltimore city.csv", layer_options = "GEOMETRY=AS_XY")
+  
+bmore_map <- read.csv("/Users/taliakaatz/Desktop/Computation & Data Display/Project Folder/baltimore city shape files/geo baltimore city.csv")
+
+bmore_sf %>%
+  
+  left_join()
+hoodnames <- unique(trimws(toupper(RVbmore$RegionName)))
+RVbmore$Name <- trimws(toupper(RVbmore$RegionName))
+bmore_sf$LABEL <- trimws(toupper(bmore_sf$LABEL))
+hoodnames[!(hoodnames %in% trimws(toupper(bmore_sf$LABEL)))]
+plot(bmore_sf['ACRES'])
 ```
 
