@@ -7,9 +7,63 @@ output: html_document
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+library(readr)
+library(knitr)
+
 ```
 
 ## Initializing project in github and rmarkdown file
 
-test commit
+read in data from git repository
+
+```{r}
+
+county_hv <- read_csv("https://raw.githubusercontent.com/taliakaatz/surv727project/master/county%20HV.csv")
+county_rv <- read_csv("https://raw.githubusercontent.com/taliakaatz/surv727project/master/county%20RV.csv")
+nhood_hv <- read_csv("https://raw.githubusercontent.com/taliakaatz/surv727project/master/neighborhood%20HV.csv")
+nhood_rv <- read_csv("https://raw.githubusercontent.com/taliakaatz/surv727project/master/neighborhood%20RV.csv")
+
+
+```
+
+
+subset data to metro area (county level) and baltimore city (neighborhood level) and reshape to long format with full date, year, and month variables
+
+```{r}
+
+RVmetro <- 
+  county_rv %>% 
+    filter(Metro %in% "Baltimore-Columbia-Towson") %>%
+    gather(key = "date", value = "RentalValue", 8:117) %>%
+    select(- State, -Metro, -StateCodeFIPS) %>%
+    separate(date, into = c("year", "month"), sep = "-", remove = FALSE) %>%
+    arrange(RegionName, desc(date))
+
+HVmetro <- 
+  county_hv %>% 
+    filter(Metro %in% "Baltimore-Columbia-Towson") %>%
+    gather(key = "date", value = "HomeValue", 8:290) %>%
+    select(- State, -Metro, -StateCodeFIPS) %>%
+    separate(date, into = c("year", "month"), sep = "-", remove = FALSE) %>%
+    arrange(RegionName, desc(date))
+
+RVbmore  <-
+  nhood_rv %>% 
+    filter(City %in% "Baltimore" & State %in% "MD") %>%
+    gather(key = "date", value = "RentalValue", 8:117) %>%
+    select(-State, -Metro, -City, -CountyName) %>%
+    separate(date, into = c("year", "month"), sep = "-", remove = FALSE) %>%
+    arrange(RegionName, desc(date))
+
+HVbmore <-
+  nhood_hv %>% 
+    filter(City %in% "Baltimore") %>%
+    gather(key = "date", value = "HomeValue", 8:290) %>%
+    select(-State, -Metro, -City, -CountyName) %>%
+    separate(date, into = c("year", "month"), sep = "-", remove = FALSE) %>%
+    arrange(RegionName, desc(date))
+
+```
 
