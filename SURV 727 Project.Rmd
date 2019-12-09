@@ -188,6 +188,24 @@ bmore_sf %>%
 ##Adding Demographics
 
 ```{r}
+RVMD <-
+  nhood_rv %>% 
+    filter(State %in% "MD") %>%
+    gather(key = "date", value = "RentalValue", 8:117) %>%
+    select(-State,  -Metro, -City, -RegionName, -SizeRank) %>%
+    separate(date, into = c("year", "month"), sep = "-", remove = FALSE) %>%
+    arrange(CountyName, desc(date))
+
+HVMD <-
+  nhood_hv %>% 
+    filter(State %in% "MD") %>%
+    gather(key = "date", value = "HomeValue", 8:290) %>%
+    select(-State,  -Metro, -City, -RegionName, -SizeRank) %>%
+    separate(date, into = c("year", "month"), sep = "-", remove = FALSE) %>%
+    arrange(CountyName, desc(date))
+```
+
+```{r}
 cs_key <- "a57bdfaf40991f97bfd12e41478426c81badd18a"
 count_md18 <- getCensus(name = "2018/acs/acs1/profile",
                       vars = c("DP05_0037PE", "DP05_0071PE", "DP05_0018E"),#%white, %hisp, median age
