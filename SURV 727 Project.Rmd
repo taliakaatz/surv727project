@@ -189,20 +189,20 @@ bmore_sf %>%
 
 ```{r}
 RVMD <-
-  nhood_rv %>% 
+  county_rv %>% 
     filter(State %in% "MD") %>%
     gather(key = "date", value = "RentalValue", 8:117) %>%
-    select(-State,  -Metro, -City, -RegionName, -SizeRank) %>%
+    select(-State, -Metro, -StateCodeFIPS, -MunicipalCodeFIPS, -SizeRank) %>%
     separate(date, into = c("year", "month"), sep = "-", remove = FALSE) %>%
-    arrange(CountyName, desc(date))
+    arrange(RegionName, desc(date))
 
 HVMD <-
-  nhood_hv %>% 
+  county_hv %>% 
     filter(State %in% "MD") %>%
-    gather(key = "date", value = "HomeValue", 8:290) %>%
-    select(-State,  -Metro, -City, -RegionName, -SizeRank) %>%
+    gather(key = "date", value = "HomeValue", 173:290) %>%
+    select(-State, -Metro, -StateCodeFIPS, -MunicipalCodeFIPS, -SizeRank) %>%
     separate(date, into = c("year", "month"), sep = "-", remove = FALSE) %>%
-    arrange(CountyName, desc(date))
+    arrange(RegionName, desc(date))
 ```
 
 ```{r}
@@ -261,23 +261,23 @@ count_md10 <- getCensus(name = "2010/acs/acs1/profile",
                       regionin = "state:24",
                       key = cs_key)[-c(1:2)]
 
-count_md10$CountyName <- c("Allegany County","Anne Arundel County", "Baltimore County", "Calvert County", "Carroll County", "Cecil County", "Charles County", "Frederick County", "Harford County", "Howard County", "Montgoery County", "Prince George's County", "Saint Mary's County", "Washington County", "Wicomico County", "Baltimore City")
+count_md10$CountyName <- c("Allegany County","Anne Arundel County", "Baltimore County", "Calvert County", "Carroll County", "Cecil County", "Charles County", "Frederick County", "Harford County", "Howard County", "Montgomery County", "Prince George's County", "Saint Mary's County", "Washington County", "Wicomico County", "Baltimore City")
 
-count_md11$CountyName <- c("Allegany County","Anne Arundel County", "Baltimore County", "Calvert County", "Carroll County", "Cecil County", "Charles County", "Frederick County", "Harford County", "Howard County", "Montgoery County", "Prince George's County", "Saint Mary's County", "Washington County", "Wicomico County", "Baltimore City")
+count_md11$CountyName <- c("Allegany County","Anne Arundel County", "Baltimore County", "Calvert County", "Carroll County", "Cecil County", "Charles County", "Frederick County", "Harford County", "Howard County", "Montgomery County", "Prince George's County", "Saint Mary's County", "Washington County", "Wicomico County", "Baltimore City")
 
-count_md12$CountyName <- c("Allegany County","Anne Arundel County", "Baltimore County", "Calvert County", "Carroll County", "Cecil County", "Charles County", "Frederick County", "Harford County", "Howard County", "Montgoery County", "Prince George's County", "Saint Mary's County", "Washington County", "Wicomico County", "Baltimore City")
+count_md12$CountyName <- c("Allegany County","Anne Arundel County", "Baltimore County", "Calvert County", "Carroll County", "Cecil County", "Charles County", "Frederick County", "Harford County", "Howard County", "Montgomery County", "Prince George's County", "Saint Mary's County", "Washington County", "Wicomico County", "Baltimore City")
 
-count_md13$CountyName <- c("Allegany County","Anne Arundel County", "Baltimore County", "Calvert County", "Carroll County", "Cecil County", "Charles County", "Frederick County", "Harford County", "Howard County", "Montgoery County", "Prince George's County", "Saint Mary's County", "Washington County", "Wicomico County", "Baltimore City")
+count_md13$CountyName <- c("Allegany County","Anne Arundel County", "Baltimore County", "Calvert County", "Carroll County", "Cecil County", "Charles County", "Frederick County", "Harford County", "Howard County", "Montgomery County", "Prince George's County", "Saint Mary's County", "Washington County", "Wicomico County", "Baltimore City")
 
-count_md14$CountyName <- c("Allegany County","Anne Arundel County", "Baltimore County", "Calvert County", "Carroll County", "Cecil County", "Charles County", "Frederick County", "Harford County", "Howard County", "Montgoery County", "Prince George's County", "Saint Mary's County", "Washington County", "Wicomico County", "Baltimore City")
+count_md14$CountyName <- c("Allegany County","Anne Arundel County", "Baltimore County", "Calvert County", "Carroll County", "Cecil County", "Charles County", "Frederick County", "Harford County", "Howard County", "Montgomery County", "Prince George's County", "Saint Mary's County", "Washington County", "Wicomico County", "Baltimore City")
 
-count_md15$CountyName <- c("Allegany County","Anne Arundel County", "Baltimore County", "Calvert County", "Carroll County", "Cecil County", "Charles County", "Frederick County", "Harford County", "Howard County", "Montgoery County", "Prince George's County", "Saint Mary's County", "Washington County", "Wicomico County", "Baltimore City")
+count_md15$CountyName <- c("Allegany County","Anne Arundel County", "Baltimore County", "Calvert County", "Carroll County", "Cecil County", "Charles County", "Frederick County", "Harford County", "Howard County", "Montgomery County", "Prince George's County", "Saint Mary's County", "Washington County", "Wicomico County", "Baltimore City")
 
-count_md16$CountyName <- c("Allegany County","Anne Arundel County", "Baltimore County", "Calvert County", "Carroll County", "Cecil County", "Charles County", "Frederick County", "Harford County", "Howard County", "Montgoery County", "Prince George's County", "Saint Mary's County", "Washington County", "Wicomico County", "Baltimore City")
+count_md16$CountyName <- c("Allegany County","Anne Arundel County", "Baltimore County", "Calvert County", "Carroll County", "Cecil County", "Charles County", "Frederick County", "Harford County", "Howard County", "Montgomery County", "Prince George's County", "Saint Mary's County", "Washington County", "Wicomico County", "Baltimore City")
 
-count_md17$CountyName <- c("Allegany County","Anne Arundel County", "Baltimore County", "Calvert County", "Carroll County", "Cecil County", "Charles County", "Frederick County", "Harford County", "Howard County", "Montgoery County", "Prince George's County", "Saint Mary's County", "Washington County", "Wicomico County", "Baltimore City")
+count_md17$CountyName <- c("Allegany County","Anne Arundel County", "Baltimore County", "Calvert County", "Carroll County", "Cecil County", "Charles County", "Frederick County", "Harford County", "Howard County", "Montgomery County", "Prince George's County", "Saint Mary's County", "Washington County", "Wicomico County", "Baltimore City")
 
-count_md18$CountyName <- c("Allegany County","Anne Arundel County", "Baltimore County", "Calvert County", "Carroll County", "Cecil County", "Charles County", "Frederick County", "Harford County", "Howard County", "Montgoery County", "Prince George's County", "Saint Mary's County", "Washington County", "Wicomico County", "Baltimore City")
+count_md18$CountyName <- c("Allegany County","Anne Arundel County", "Baltimore County", "Calvert County", "Carroll County", "Cecil County", "Charles County", "Frederick County", "Harford County", "Howard County", "Montgomery County", "Prince George's County", "Saint Mary's County", "Washington County", "Wicomico County", "Baltimore City")
 
 
 
@@ -292,106 +292,108 @@ RVMD$nonwhite <- NA
 RVMD$hispanic <- NA
 RVMD$medianage <- NA
 
-for(i in 1:length(HVMD$CountyName)){
-  if(HVMD$CountyName[i] %in% count_md10$CountyName){
+for(i in 1:length(HVMD$RegionName)){
+  if(HVMD$RegionName[i] %in% count_md10$CountyName){
     if(HVMD$year[i] == 2010){
-      HVMD$nonwhite[i] <- 100 - count_md10$DP05_0032PE[count_md10$CountyName == HVMD$CountyName[i]]
-      HVMD$hispanic[i] <- count_md10$DP05_0066PE[count_md10$CountyName == HVMD$CountyName[i]]
-      HVMD$medianage[i] <- count_md10$DP05_0017E[count_md10$CountyName == HVMD$CountyName[i]]
+      HVMD$nonwhite[i] <- 100 - count_md10$DP05_0032PE[count_md10$CountyName == HVMD$RegionName[i]]
+      HVMD$hispanic[i] <- count_md10$DP05_0066PE[count_md10$CountyName == HVMD$RegionName[i]]
+      HVMD$medianage[i] <- count_md10$DP05_0017E[count_md10$CountyName == HVMD$RegionName[i]]
     }
     else if(HVMD$year[i] == 2011){
-      HVMD$nonwhite[i] <- 100 - count_md11$DP05_0032PE[count_md11$CountyName == HVMD$CountyName[i]]
-      HVMD$hispanic[i] <- count_md11$DP05_0066PE[count_md11$CountyName == HVMD$CountyName[i]]
-      HVMD$medianage[i] <- count_md11$DP05_0017E[count_md11$CountyName == HVMD$CountyName[i]]
+      HVMD$nonwhite[i] <- 100 - count_md11$DP05_0032PE[count_md11$CountyName == HVMD$RegionName[i]]
+      HVMD$hispanic[i] <- count_md11$DP05_0066PE[count_md11$CountyName == HVMD$RegionName[i]]
+      HVMD$medianage[i] <- count_md11$DP05_0017E[count_md11$CountyName == HVMD$RegionName[i]]
     }
     else if(HVMD$year[i] == 2012){
-      HVMD$nonwhite[i] <- 100 - count_md12$DP05_0032PE[count_md12$CountyName == HVMD$CountyName[i]]
-      HVMD$hispanic[i] <- count_md12$DP05_0066PE[count_md12$CountyName == HVMD$CountyName[i]]
-      HVMD$medianage[i] <- count_md12$DP05_0017E[count_md12$CountyName == HVMD$CountyName[i]]
+      HVMD$nonwhite[i] <- 100 - count_md12$DP05_0032PE[count_md12$CountyName == HVMD$RegionName[i]]
+      HVMD$hispanic[i] <- count_md12$DP05_0066PE[count_md12$CountyName == HVMD$RegionName[i]]
+      HVMD$medianage[i] <- count_md12$DP05_0017E[count_md12$CountyName == HVMD$RegionName[i]]
     }
     else if(HVMD$year[i] == 2013){
-      HVMD$nonwhite[i] <- 100 - count_md13$DP05_0032PE[count_md13$CountyName == HVMD$CountyName[i]]
-      HVMD$hispanic[i] <- count_md13$DP05_0066PE[count_md13$CountyName == HVMD$CountyName[i]]
-      HVMD$medianage[i] <- count_md13$DP05_0017E[count_md13$CountyName == HVMD$CountyName[i]]
+      HVMD$nonwhite[i] <- 100 - count_md13$DP05_0032PE[count_md13$CountyName == HVMD$RegionName[i]]
+      HVMD$hispanic[i] <- count_md13$DP05_0066PE[count_md13$CountyName == HVMD$RegionName[i]]
+      HVMD$medianage[i] <- count_md13$DP05_0017E[count_md13$CountyName == HVMD$RegionName[i]]
     }
     else if(HVMD$year[i] == 2014){
-      HVMD$nonwhite[i] <- 100 - count_md14$DP05_0032PE[count_md14$CountyName == HVMD$CountyName[i]]
-      HVMD$hispanic[i] <- count_md14$DP05_0066PE[count_md14$CountyName == HVMD$CountyName[i]]
-      HVMD$medianage[i] <- count_md14$DP05_0017E[count_md14$CountyName == HVMD$CountyName[i]]
+      HVMD$nonwhite[i] <- 100 - count_md14$DP05_0032PE[count_md14$CountyName == HVMD$RegionName[i]]
+      HVMD$hispanic[i] <- count_md14$DP05_0066PE[count_md14$CountyName == HVMD$RegionName[i]]
+      HVMD$medianage[i] <- count_md14$DP05_0017E[count_md14$CountyName == HVMD$RegionName[i]]
     }
     else if(HVMD$year[i] == 2015){
-      HVMD$nonwhite[i] <- 100 - count_md15$DP05_0032PE[count_md15$CountyName == HVMD$CountyName[i]]
-      HVMD$hispanic[i] <- count_md15$DP05_0066PE[count_md15$CountyName == HVMD$CountyName[i]]
-      HVMD$medianage[i] <- count_md15$DP05_0017E[count_md15$CountyName == HVMD$CountyName[i]]
+      HVMD$nonwhite[i] <- 100 - count_md15$DP05_0032PE[count_md15$CountyName == HVMD$RegionName[i]]
+      HVMD$hispanic[i] <- count_md15$DP05_0066PE[count_md15$CountyName == HVMD$RegionName[i]]
+      HVMD$medianage[i] <- count_md15$DP05_0017E[count_md15$CountyName == HVMD$RegionName[i]]
     }
     else if(HVMD$year[i] == 2016){
-      HVMD$nonwhite[i] <- 100 - count_md16$DP05_0032PE[count_md16$CountyName == HVMD$CountyName[i]]
-      HVMD$hispanic[i] <- count_md16$DP05_0066PE[count_md16$CountyName == HVMD$CountyName[i]]
-      HVMD$medianage[i] <- count_md16$DP05_0017E[count_md16$CountyName == HVMD$CountyName[i]]
+      HVMD$nonwhite[i] <- 100 - count_md16$DP05_0032PE[count_md16$CountyName == HVMD$RegionName[i]]
+      HVMD$hispanic[i] <- count_md16$DP05_0066PE[count_md16$CountyName == HVMD$RegionName[i]]
+      HVMD$medianage[i] <- count_md16$DP05_0017E[count_md16$CountyName == HVMD$RegionName[i]]
     }
     else if(HVMD$year[i] == 2017){
-      HVMD$nonwhite[i] <- 100 - count_md17$DP05_0037PE [count_md17$CountyName == HVMD$CountyName[i]]
-      HVMD$hispanic[i] <- count_md17$DP05_0071PE[count_md17$CountyName == HVMD$CountyName[i]]
-      HVMD$medianage[i] <- count_md17$DP05_0018E[count_md17$CountyName == HVMD$CountyName[i]]
+      HVMD$nonwhite[i] <- 100 - count_md17$DP05_0037PE [count_md17$CountyName == HVMD$RegionName[i]]
+      HVMD$hispanic[i] <- count_md17$DP05_0071PE[count_md17$CountyName == HVMD$RegionName[i]]
+      HVMD$medianage[i] <- count_md17$DP05_0018E[count_md17$CountyName == HVMD$RegionName[i]]
     }
     else if(HVMD$year[i] == 2018){
-      HVMD$nonwhite[i] <- 100 - count_md18$DP05_0037PE[count_md18$CountyName == HVMD$CountyName[i]]
-      HVMD$hispanic[i] <- count_md18$DP05_0071PE[count_md18$CountyName == HVMD$CountyName[i]]
-      HVMD$medianage[i] <- count_md18$DP05_0018E[count_md18$CountyName == HVMD$CountyName[i]]
+      HVMD$nonwhite[i] <- 100 - count_md18$DP05_0037PE[count_md18$CountyName == HVMD$RegionName[i]]
+      HVMD$hispanic[i] <- count_md18$DP05_0071PE[count_md18$CountyName == HVMD$RegionName[i]]
+      HVMD$medianage[i] <- count_md18$DP05_0018E[count_md18$CountyName == HVMD$RegionName[i]]
     }
     
   }
 }
 
-for(i in 1:length(RVMD$CountyName)){
-  if(RVMD$CountyName[i] %in% count_md10$CountyName){
+for(i in 1:length(RVMD$RegionName)){
+  if(RVMD$RegionName[i] %in% count_md10$CountyName){
     if(RVMD$year[i] == 2010){
-      RVMD$nonwhite[i] <- 100 - count_md10$DP05_0032PE[count_md10$CountyName == RVMD$CountyName[i]]
-      RVMD$hispanic[i] <- count_md10$DP05_0066PE[count_md10$CountyName == RVMD$CountyName[i]]
-      RVMD$medianage[i] <- count_md10$DP05_0017E[count_md10$CountyName == RVMD$CountyName[i]]
+      RVMD$nonwhite[i] <- 100 - count_md10$DP05_0032PE[count_md10$CountyName == RVMD$RegionName[i]]
+      RVMD$hispanic[i] <- count_md10$DP05_0066PE[count_md10$CountyName == RVMD$RegionName[i]]
+      RVMD$medianage[i] <- count_md10$DP05_0017E[count_md10$CountyName == RVMD$RegionName[i]]
     }
     else if(RVMD$year[i] == 2011){
-      RVMD$nonwhite[i] <- 100 - count_md11$DP05_0032PE[count_md11$CountyName == RVMD$CountyName[i]]
-      RVMD$hispanic[i] <- count_md11$DP05_0066PE[count_md11$CountyName == RVMD$CountyName[i]]
-      RVMD$medianage[i] <- count_md11$DP05_0017E[count_md11$CountyName == RVMD$CountyName[i]]
+      RVMD$nonwhite[i] <- 100 - count_md11$DP05_0032PE[count_md11$CountyName == RVMD$RegionName[i]]
+      RVMD$hispanic[i] <- count_md11$DP05_0066PE[count_md11$CountyName == RVMD$RegionName[i]]
+      RVMD$medianage[i] <- count_md11$DP05_0017E[count_md11$CountyName == RVMD$RegionName[i]]
     }
     else if(RVMD$year[i] == 2012){
-      RVMD$nonwhite[i] <- 100 - count_md12$DP05_0032PE[count_md12$CountyName == RVMD$CountyName[i]]
-      RVMD$hispanic[i] <- count_md12$DP05_0066PE[count_md12$CountyName == RVMD$CountyName[i]]
-      RVMD$medianage[i] <- count_md12$DP05_0017E[count_md12$CountyName == RVMD$CountyName[i]]
+      RVMD$nonwhite[i] <- 100 - count_md12$DP05_0032PE[count_md12$CountyName == RVMD$RegionName[i]]
+      RVMD$hispanic[i] <- count_md12$DP05_0066PE[count_md12$CountyName == RVMD$RegionName[i]]
+      RVMD$medianage[i] <- count_md12$DP05_0017E[count_md12$CountyName == RVMD$RegionName[i]]
     }
     else if(RVMD$year[i] == 2013){
-      RVMD$nonwhite[i] <- 100 - count_md13$DP05_0032PE[count_md13$CountyName == RVMD$CountyName[i]]
-      RVMD$hispanic[i] <- count_md13$DP05_0066PE[count_md13$CountyName == RVMD$CountyName[i]]
-      RVMD$medianage[i] <- count_md13$DP05_0017E[count_md13$CountyName == RVMD$CountyName[i]]
+      RVMD$nonwhite[i] <- 100 - count_md13$DP05_0032PE[count_md13$CountyName == RVMD$RegionName[i]]
+      RVMD$hispanic[i] <- count_md13$DP05_0066PE[count_md13$CountyName == RVMD$RegionName[i]]
+      RVMD$medianage[i] <- count_md13$DP05_0017E[count_md13$CountyName == RVMD$RegionName[i]]
     }
     else if(RVMD$year[i] == 2014){
-      RVMD$nonwhite[i] <- 100 - count_md14$DP05_0032PE[count_md14$CountyName == RVMD$CountyName[i]]
-      RVMD$hispanic[i] <- count_md14$DP05_0066PE[count_md14$CountyName == RVMD$CountyName[i]]
-      RVMD$medianage[i] <- count_md14$DP05_0017E[count_md14$CountyName == RVMD$CountyName[i]]
+      RVMD$nonwhite[i] <- 100 - count_md14$DP05_0032PE[count_md14$CountyName == RVMD$RegionName[i]]
+      RVMD$hispanic[i] <- count_md14$DP05_0066PE[count_md14$CountyName == RVMD$RegionName[i]]
+      RVMD$medianage[i] <- count_md14$DP05_0017E[count_md14$CountyName == RVMD$RegionName[i]]
     }
     else if(RVMD$year[i] == 2015){
-      RVMD$nonwhite[i] <- 100 - count_md15$DP05_0032PE[count_md15$CountyName == RVMD$CountyName[i]]
-      RVMD$hispanic[i] <- count_md15$DP05_0066PE[count_md15$CountyName == RVMD$CountyName[i]]
-      RVMD$medianage[i] <- count_md15$DP05_0017E[count_md15$CountyName == RVMD$CountyName[i]]
+      RVMD$nonwhite[i] <- 100 - count_md15$DP05_0032PE[count_md15$CountyName == RVMD$RegionName[i]]
+      RVMD$hispanic[i] <- count_md15$DP05_0066PE[count_md15$CountyName == RVMD$RegionName[i]]
+      RVMD$medianage[i] <- count_md15$DP05_0017E[count_md15$CountyName == RVMD$RegionName[i]]
     }
     else if(RVMD$year[i] == 2016){
-      RVMD$nonwhite[i] <- 100 - count_md16$DP05_0032PE[count_md16$CountyName == RVMD$CountyName[i]]
-      RVMD$hispanic[i] <- count_md16$DP05_0066PE[count_md16$CountyName == RVMD$CountyName[i]]
-      RVMD$medianage[i] <- count_md16$DP05_0017E[count_md16$CountyName == RVMD$CountyName[i]]
+      RVMD$nonwhite[i] <- 100 - count_md16$DP05_0032PE[count_md16$CountyName == RVMD$RegionName[i]]
+      RVMD$hispanic[i] <- count_md16$DP05_0066PE[count_md16$CountyName == RVMD$RegionName[i]]
+      RVMD$medianage[i] <- count_md16$DP05_0017E[count_md16$CountyName == RVMD$RegionName[i]]
     }
     else if(RVMD$year[i] == 2017){
-      RVMD$nonwhite[i] <- 100 - count_md17$DP05_0037PE [count_md17$CountyName == RVMD$CountyName[i]]
-      RVMD$hispanic[i] <- count_md17$DP05_0071PE[count_md17$CountyName == RVMD$CountyName[i]]
-      RVMD$medianage[i] <- count_md17$DP05_0018E[count_md17$CountyName == RVMD$CountyName[i]]
+      RVMD$nonwhite[i] <- 100 - count_md17$DP05_0037PE [count_md17$CountyName == RVMD$RegionName[i]]
+      RVMD$hispanic[i] <- count_md17$DP05_0071PE[count_md17$CountyName == RVMD$RegionName[i]]
+      RVMD$medianage[i] <- count_md17$DP05_0018E[count_md17$CountyName == RVMD$RegionName[i]]
     }
     else if(RVMD$year[i] == 2018){
-      RVMD$nonwhite[i] <- 100 - count_md18$DP05_0037PE[count_md18$CountyName == RVMD$CountyName[i]]
-      RVMD$hispanic[i] <- count_md18$DP05_0071PE[count_md18$CountyName == RVMD$CountyName[i]]
-      RVMD$medianage[i] <- count_md18$DP05_0018E[count_md18$CountyName == RVMD$CountyName[i]]
+      RVMD$nonwhite[i] <- 100 - count_md18$DP05_0037PE[count_md18$CountyName == RVMD$RegionName[i]]
+      RVMD$hispanic[i] <- count_md18$DP05_0071PE[count_md18$CountyName == RVMD$RegionName[i]]
+      RVMD$medianage[i] <- count_md18$DP05_0018E[count_md18$CountyName == RVMD$RegionName[i]]
     }
     
   }
 }
+HVMD$nonwhite[HVMD$nonwhite > 100] <- NA
+RVMD$nonwhite[RVMD$nonwhite > 100] <- NA
 ```
 
