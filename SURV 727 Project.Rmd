@@ -155,6 +155,7 @@ othhoodnames <- unique(bmore_sf$NHOOD)
 othhoodnames[!(othhoodnames %in% RVbmore$NHOOD)]
 
 #adjust non-matches (zillow neighborhood names not matched to any in shaefile) as necessary and check results
+### will basically have to re-do this with the BNIA shapefile :( lol
 
 RVbmore %<>%
   mutate(NHOOD = gsub("COPPIN HEIGHTS - ASH-CO-EAST", "COPPIN HEIGHTS/ASH-CO-EAST", NHOOD)) %>%
@@ -181,6 +182,13 @@ bmore_sf %>%
   ggplot() +
     geom_sf(aes(fill = LABEL), show.legend = FALSE)
   
+
+##attempt to joing zillow data and plot rental values
+bmore_sf %>%
+  left_join(RVbmore, by = "NHOOD") %>%
+  filter(date == "2018-01") %>%
+  ggplot() +
+    geom_sf(aes(fill = RentalValue))
 
 
 ```
