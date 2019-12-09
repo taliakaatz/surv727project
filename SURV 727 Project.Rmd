@@ -16,6 +16,7 @@ library(dbplyr)
 library(bigrquery)
 library(sf)
 library(magrittr)
+library(censusapi)
 
 ```
 
@@ -95,35 +96,6 @@ first attempts at mapping visualizations -- work in progress
 
 ```{r}
 
-#pull MD county map data from 'maps' package
-md_map <- map_data("county", region = "maryland")
-
-#map filling MD counties by average rental values in Jan 2019
-county_rv %>% 
-    filter(State %in% "MD") %>%
-    gather(key = "date", value = "RentalValue", 8:117) %>%
-    select(- State, -StateCodeFIPS) %>%
-    separate(date, into = c("year", "month"), sep = "-", remove = FALSE) %>%
-    mutate(subregion = gsub(" County", "", RegionName)) %>%
-    mutate(subregion = tolower(subregion)) %>%
-    right_join(md_map, by = "subregion") %>%
-    filter(date == "2019-01") %>%
-    ggplot() + 
-      geom_polygon(aes(x = long, y = lat, group = group, fill = RentalValue))
-
-#map filling MD counties by average home values in Jan 2019
-county_hv %>% 
-    filter(State %in% "MD") %>%
-    gather(key = "date", value = "HomeValue", 8:290) %>%
-    select(- State, -StateCodeFIPS) %>%
-    separate(date, into = c("year", "month"), sep = "-", remove = FALSE) %>%
-    mutate(subregion = gsub(" County", "", RegionName)) %>%
-    mutate(subregion = tolower(subregion)) %>%
-    right_join(md_map, by = "subregion") %>%
-    filter(date == "2019-01") %>%
-    ggplot() + 
-      geom_polygon(aes(x = long, y = lat, group = group, fill = HomeValue))
-
 
 #read in shapefile as a "simple feature"    
 bmore_sf <- st_read("/Users/taliakaatz/Desktop/Computation & Data Display/Project Folder/baltimore city shape files/Maryland_Baltimore_City_Neighborhoods.shp")
@@ -196,21 +168,25 @@ bmore_sf %>%
 ##Adding Demographics
 
 ```{r}
+
+#talia updated code to keep Metro variable and to subset to only 2010-2018
 RVMD <-
   county_rv %>% 
     filter(State %in% "MD") %>%
     gather(key = "date", value = "RentalValue", 8:117) %>%
-    select(-State, -Metro, -StateCodeFIPS, -MunicipalCodeFIPS, -SizeRank) %>%
+    select(-State, -StateCodeFIPS, -MunicipalCodeFIPS, -SizeRank) %>%
     separate(date, into = c("year", "month"), sep = "-", remove = FALSE) %>%
+    filter(year %in% 2010:2018) %>%
     arrange(RegionName, desc(date))
 
 HVMD <-
   county_hv %>% 
     filter(State %in% "MD") %>%
-    gather(key = "date", value = "HomeValue", 173:290) %>%
-    select(-State, -Metro, -StateCodeFIPS, -MunicipalCodeFIPS, -SizeRank) %>%
+    gather(key = "date", value = "HomeValue", 8:290) %>%
+    select(-State, -StateCodeFIPS, -MunicipalCodeFIPS, -SizeRank) %>%
     separate(date, into = c("year", "month"), sep = "-", remove = FALSE) %>%
-    arrange(RegionName, desc(date))
+    filter(year %in% 2010:2018) %>%
+    arrange(RegionName)
 ```
 
 ```{r}
@@ -403,5 +379,66 @@ for(i in 1:length(RVMD$RegionName)){
 }
 HVMD$nonwhite[HVMD$nonwhite > 100] <- NA
 RVMD$nonwhite[RVMD$nonwhite > 100] <- NA
+```
+
+##visualizations for hypothesis #1: County-level rental values will show a greater increase over time than housing values over the same period
+
+```{r}
+
+year_breaks <- c("2010-01", "2011-01", "2012-01", "2013-01", "2014-01", "2015-01", "2016-01", "2017-01", "2018-01")
+
+HVMD %>%
+  left_join(RVMD, by = c("RegionName", "date")) %>%
+  mutate(hrv_ratio = (RentalValue/(HomeValue/1000))) %>%
+  filter(Metro.x %in% "Baltimore-Columbia-Towson") %>%
+  ggplot() +
+  geom_jitter(aes(x = date, y = hrv_ratio , group = RegionName, color = RegionName)) + 
+  ggtitle("Change in Rental-to-Homevalue Ratio Over Time in Baltimore Metro") + 
+  scale_x_discrete("Date", c('2010', year_breaks, year_breaks)) + 
+  ylab("Ratio of rental values to home values")
+
+HVMD %>%
+  left_join(RVMD, by = c("RegionName", "date")) %>%
+  filter(Metro.x %in% "Baltimore-Columbia-Towson") %>%
+  ggplot() +
+  geom_jitter(aes(x = date, y = RentalValue , group = RegionName, color = RegionName)) + 
+  ggtitle("Rental Values Over Time in Baltimore Metro") + 
+  scale_x_discrete("Date", c('2010', year_breaks, year_breaks)) + 
+  ylab("Average rental Values (monthly rent in $)")
+
+HVMD %>%
+  left_join(RVMD, by = c("RegionName", "date")) %>%
+  filter(Metro.x %in% "Baltimore-Columbia-Towson") %>%
+  ggplot() +
+  geom_jitter(aes(x = date, y = (HomeValue/1000) , group = RegionName, color = RegionName)) + 
+  ggtitle("Home Values Ratio Over Time in Baltimore Metro") + 
+  scale_x_discrete("Date", c('2010', year_breaks, year_breaks)) + 
+  ylab("Average home value (in thousands)")
+
+
+```
+
+##visualizations for hypothesis #2: This effect will be more pronounced in urban than in rural counties
+
+```{r}
+
+#pull MD county map data from 'maps' package
+md_map <- map_data("county", region = "maryland")
+
+#map filling MD counties by average rental values in Jan 2019
+HVMD %>%
+    left_join(RVMD, by = c("RegionName", "date")) %>%
+    mutate(hrv_ratio = (RentalValue/(HomeValue/1000))) %>%
+    mutate(subregion = gsub(" County", "", RegionName)) %>%
+    mutate(subregion = tolower(subregion)) %>%
+    right_join(md_map, by = "subregion") %>%
+    filter(date %in% c("2018-12", "2015-12")) %>%
+    ggplot() + 
+      geom_polygon(aes(x = long, y = lat, group = subregion, fill = hrv_ratio)) +
+      facet_wrap(~date, scale = "free") +
+      ggtitle("MD Rental-to-HomeValue Ratios in Dec. 2015 and Dec. 2018") +
+      scale_fill_continuous(name = "RTHV Ratio")
+
+
 ```
 
