@@ -35,43 +35,41 @@ nhood_rv <- read_csv("https://raw.githubusercontent.com/taliakaatz/surv727projec
 ```
 
 
-subset data to metro area (county level) and baltimore city (neighborhood level) and reshape to long format with full date, year, and month variables. also clean some superfluous variables
+subset data to baltimore city (neighborhood level) and reshape to long format with full date, year, and month variables. also clean some superfluous variables and filter to only 2010-2018
 
 
 
 ```{r, preprocess zillow data}
 
-RVmetro <- 
-  county_rv %>% 
-    filter(Metro %in% "Baltimore-Columbia-Towson") %>%
-    gather(key = "date", value = "RentalValue", 8:117) %>%
-    select(- State, -Metro, -StateCodeFIPS) %>%
-    separate(date, into = c("year", "month"), sep = "-", remove = FALSE) %>%
-    arrange(RegionName, desc(date))
-
-HVmetro <- 
-  county_hv %>% 
-    filter(Metro %in% "Baltimore-Columbia-Towson") %>%
-    gather(key = "date", value = "HomeValue", 8:290) %>%
-    select(- State, -Metro, -StateCodeFIPS) %>%
-    separate(date, into = c("year", "month"), sep = "-", remove = FALSE) %>%
-    arrange(RegionName, desc(date))
-
-RVbmore  <-
+RVBM  <-
   nhood_rv %>% 
     filter(City %in% "Baltimore" & State %in% "MD") %>%
     gather(key = "date", value = "RentalValue", 8:117) %>%
     select(-State, -Metro, -City, -CountyName) %>%
     separate(date, into = c("year", "month"), sep = "-", remove = FALSE) %>%
+    filter(year %in% 2010:2018) %>%
     arrange(RegionName, desc(date))
 
-HVbmore <-
+HVBM <-
   nhood_hv %>% 
     filter(City %in% "Baltimore") %>%
     gather(key = "date", value = "HomeValue", 8:290) %>%
     select(-State, -Metro, -City, -CountyName) %>%
     separate(date, into = c("year", "month"), sep = "-", remove = FALSE) %>%
+    filter(year %in% 2010:2018) %>%
     arrange(RegionName, desc(date))
+
+#check whether neighborhood names line up between rental and home value files
+
+countynames <- unique(RVBM$RegionName)
+rent_hoods <- countynames[!(countynames %in% HVBM$RegionName)]
+
+countynames2 <- unique(HVBM$RegionName)
+home_hoods <- countynames2[!(countynames2 %in% RVBM$RegionName)]
+
+print(rent_hoods)
+print(home_hoods)
+#evidence of significant differences in the neighborhoods present in each file
 
 ```
 
@@ -91,7 +89,7 @@ HVbmore %>%
 ```
 
 
-first attempts at mapping visualizations -- work in progress
+first attempts at neighborhood mapping visualizations -- work in progress
 
 
 ```{r}
@@ -379,6 +377,12 @@ for(i in 1:length(RVMD$RegionName)){
 }
 HVMD$nonwhite[HVMD$nonwhite > 100] <- NA
 RVMD$nonwhite[RVMD$nonwhite > 100] <- NA
+
+##talia added: make combined dataset with rental values appended to HVMD
+combinedMD <- 
+  HVMD %>%
+    left_join(RVMD, by = c("RegionName", "date"))
+
 ```
 
 ##visualizations for hypothesis #1: County-level rental values will show a greater increase over time than housing values over the same period
@@ -438,6 +442,75 @@ HVMD %>%
       facet_wrap(~date, scale = "free") +
       ggtitle("MD Rental-to-HomeValue Ratios in Dec. 2015 and Dec. 2018") +
       scale_fill_continuous(name = "RTHV Ratio")
+
+
+```
+
+
+Merging BNIA data to neighborhood data
+
+```{r}
+
+#read in shapefile and geographic crosswalk
+
+bnia_sf <- st_read("/Users/taliakaatz/Desktop/Computation & Data Display/Project Folder/csa_2010_boundaries/CSA_NSA_Tracts.shp")
+
+bnia_crosswalk <- read.csv("/Users/taliakaatz/Desktop/Computation & Data Display/Project Folder/CSA_to_NSA_2010.csv")
+
+bnia_crosswalk %<>% 
+  mutate(NHOOD = trimws(toupper(NSA2010))) %>%
+  select(-NSA2010)
+
+#create uniform neighborhood name variable
+HVBM %<>%
+  mutate(NHOOD = trimws(toupper(RegionName)))
+
+RVBM %<>%
+  mutate(NHOOD = trimws(toupper(RegionName))) 
+
+#merge crosswalk to home and rental value data and identify unmatched neighborhood names
+HVBM %>%
+  left_join(bnia_crosswalk, by = "NHOOD") %>%
+  filter(is.na(CSA2010)) %>%
+  distinct(NHOOD)
+
+RVBM %>%
+  left_join(bnia_crosswalk, by = "NHOOD") %>%
+  filter(is.na(CSA2010)) %>%
+  distinct(NHOOD)
+
+#fix unmatched neighborhood names (update in Zillow file to match crosswalk): 
+#CHINQUAPIN PARK-BELVEDERE
+#HARFORD-ECHODALE - PERRING PARKWAY				
+#JOSEPH LEE	(not in BNIA file but Google indicates it as part of Bayview)			
+#MOUNT WASHINGTON				
+#NORTH ROLAND PARK - POPLAR HILL				
+#SBIC	(not in BNIA file but Google indicates South Batimore is sometimes called SBIC)			
+#WOODRING
+
+HVBM %<>%
+  mutate(NHOOD = gsub("CHINQUAPIN PARK-BELVEDERE", "CHINQUAPIN PARK", NHOOD)) %>%
+  mutate(NHOOD = gsub("HARFORD-ECHODALE - PERRING PARKWAY", "HARFORD-ECHODALE/PERRING PARKWAY", NHOOD)) %>%
+  mutate(NHOOD = gsub("JOSEPH LEE", "BAYVIEW", NHOOD)) %>%
+  mutate(NHOOD = gsub("MOUNT WASHINGTON", "MT. WASHINGTON", NHOOD)) %>%
+  mutate(NHOOD = gsub("NORTH ROLAND PARK - POPLAR HILL", "NORTH ROLAND PARK/POPLAR HILL", NHOOD)) %>%
+  mutate(NHOOD = gsub("SBIC", "SOUTH BALTIMORE", NHOOD)) %>%
+  mutate(NHOOD = gsub("WOODRING", "WESTFIELD", NHOOD))
+
+
+RVBM %<>%
+  mutate(NHOOD = gsub("COPPIN HEIGHTS - ASH-CO-EAST", "COPPIN HEIGHTS/ASH-CO-EAST", NHOOD)) %>%
+  mutate(NHOOD = gsub("ELLWOOD PARK-MONUMENT", "ELLWOOD PARK/MONUMENT", NHOOD)) %>%
+  mutate(NHOOD = gsub("HARFORD-ECHODALE - PERRING PARKWAY", "HARFORD-ECHODALE/PERRING PARKWAY", NHOOD)) %>%
+  mutate(NHOOD = gsub("MONDAWIN", "MONDAWMIN", NHOOD)) %>%
+  mutate(NHOOD = gsub("MOUNT WASHINGTON", "MT. WASHINGTON", NHOOD)) %>%
+  mutate(NHOOD = gsub("NEW SOUTHWEST - MOUNT CLARE", "NEW SOUTHWEST/MT. CLARE", NHOOD)) %>%
+  mutate(NHOOD = gsub("PENROSE-FAYETTE STREET OUTREACH", "PENROSE/FAYETTE STREET OUTREACH", NHOOD)) %>%
+  mutate(NHOOD = gsub("SBIC", "SOUTH BALTIMORE", NHOOD)) %>%
+  mutate(NHOOD = gsub("WASHINGTON VILLAGE", "WASHINGTON VILLAGE/PIGTOWN", NHOOD)) %>%
+  mutate(NHOOD = gsub("WOODRING", "WESTFIELD", NHOOD))
+
+#merge and check again with updated neighborhoods:
 
 
 ```
