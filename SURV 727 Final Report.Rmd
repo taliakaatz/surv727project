@@ -715,7 +715,7 @@ Visualizations for H2: This effect will be more pronounced in urban than in rura
 
 ```{r}
 
-#map filling MD counties by average rental values in Jan 2019
+#map filling MD counties by average rental values in 2017
 HVMD %>%
     left_join(RVMD, by = c("RegionName", "date")) %>%
     mutate(hrv_ratio = (RentalValue/(HomeValue/1000))) %>%
@@ -729,7 +729,19 @@ HVMD %>%
       ggtitle("MD Rental-to-HomeValue Ratios in Dec. 2015 and Dec. 2018") +
       scale_fill_continuous(name = "RTHV Ratio")
 
-
+#map filling MD counties by average rental values in 2017
+HVMD %>%
+    left_join(RVMD, by = c("RegionName", "date")) %>%
+    mutate(hrv_ratio = (RentalValue/(HomeValue/1000))) %>%
+    mutate(subregion = gsub(" County", "", RegionName)) %>%
+    mutate(subregion = tolower(subregion)) %>%
+    right_join(md_map, by = "subregion") %>%
+    filter(date %in% c("2018-12", "2015-12")) %>%
+    ggplot() + 
+      geom_polygon(aes(x = long, y = lat, group = subregion, fill = hrv_ratio)) +
+      facet_wrap(~date, scale = "free") +
+      ggtitle("MD Rental-to-HomeValue Ratios in Dec. 2015 and Dec. 2018") +
+      scale_fill_continuous(name = "RTHV Ratio")
 ```
 
 Visualizations for H3: Areas with younger populations will have higher rental values (compared to housing values) than areas with older populations
