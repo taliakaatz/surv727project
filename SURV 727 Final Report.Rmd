@@ -1,0 +1,782 @@
+---
+title: "SURV 727 Final Report"
+author: "Talia Kaatz and Chris Brehm"
+date: "12/13/2019"
+output: html_document
+---
+#Introduction
+
+Housing affordability and changes in the housing market garner significant attention from politicians, activists, and economists, and can be seen as indicators of broader social issues. Gentrification, predatory landlords and lenders, and segregation of housing markets as indicators of racial inequality and oppression, societal fears of economic instability manifest in predictions of the next bubble burst or housing shortages, and generational changes can be indicated by shifts in renting vs. ownership.
+
+Of the many American metropolitan areas affected by the housing crisis, the city of Baltimore, MD provides distinct characteristics that uniquely qualify it to study as a case study. Baltimore City, unlike in many major metro areas, is not part of any surrounding counties but is classed as an “independent city.” Tax bases are therefore separate at both city and county level, providing unique comparison of urban/suburban areas, as well as providing a basis for comparison between the city and other Maryland counties. Moreover, Baltimore’s history of redlining and segregation within the city has produced stark demographic and economic differences at the neighborhood level, and a recent study ranked Baltimore among most heavily-gentrified cities in U.S. (Meehan 2019).
+
+In order to better understand the housing crisis and the factors associated with it, we have drawn data from a variety of sources including Zillow, the American Community Survey, and the Baltimore Neighborhood Indicator Alliance. Using this data, we will investigate the following hypotheses:
+
+H1: County-level rental values will show a greater increase over time than housing values over the same period
+
+H2: This effect will be more pronounced in urban than in rural counties
+
+H3: Areas with younger populations will have higher rental values (compared to housing values) than areas with older populations
+
+H4: Increases over time in home and rental values will be associated with decreases in the proportion of non-white residents
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+library(readr)
+library(knitr)
+library(DBI)
+library(dbplyr)
+library(bigrquery)
+library(sf)
+library(magrittr)
+library(censusapi)
+library(readxl)
+
+```
+
+#Background
+
+The most recent edition of the Oxford English Dictionary defines gentrification as “the process of renovating and improving housing or a district so that it conforms to middle-class taste” (Lexico 2019). Advocates and city residents often express concerns about gentrification, as it is typically associated with the displacement of poorer or non-white residents from these areas (Capps 2019, Meehan 2019). Additionally, rising rents and lack of home-ownership among millenials have led to growing concerns about rental markets, in addition to home sales markets (Hoffower 2019, Kasakove 2019). 
+
+However, gentrification is not always (perhaps not even usually) strongly associated with displacement or negative effects for minority residents (Brummet and Reed 2019). Understanding housing equity is of particular importance in the U.S., where racial segregation and housing policy have been used to restrict minority groups’ access to wealth and resources (Squire and Cubrin 2005, Hoynes and McFadden 1994). Due to the complex relationships at play between time, geography, and various community demographics and characteristics, this is an area where creative data visualizations can aid in exploring and understanding patterns of housing costs, race, and age. Comparing race and age distributions in an area with average housing values or rents may each reveal a different picture of these relationships. 
+
+#Data
+
+
+
+```{r, import data}
+
+#Zillow data first, from the github repository
+county_hv <- read_csv("https://raw.githubusercontent.com/taliakaatz/surv727project/master/county%20HV.csv")
+county_rv <- read_csv("https://raw.githubusercontent.com/taliakaatz/surv727project/master/county%20RV.csv")
+nhood_hv <- read_csv("https://raw.githubusercontent.com/taliakaatz/surv727project/master/neighborhood%20HV.csv")
+nhood_rv <- read_csv("https://raw.githubusercontent.com/taliakaatz/surv727project/master/neighborhood%20RV.csv")
+
+#ACS data next, using 'censusapi'
+cs_key <- "a57bdfaf40991f97bfd12e41478426c81badd18a"
+count_md18 <- getCensus(name = "2018/acs/acs1/profile",
+                      vars = c("DP05_0037PE", "DP05_0071PE", "DP05_0018E"),#%white, %hisp, median age
+                      region = "county:*", 
+                      regionin = "state:24",
+                      key = cs_key)[-c(1:2)]
+
+count_md17 <- getCensus(name = "2017/acs/acs1/profile",
+                      vars = c("DP05_0037PE", "DP05_0071PE", "DP05_0018E"),#%white, %hisp, median age
+                      region = "county:*", 
+                      regionin = "state:24",
+                      key = cs_key)[-c(1:2)]
+
+count_md16 <- getCensus(name = "2016/acs/acs1/profile",
+                      vars = c("DP05_0032PE", "DP05_0066PE", "DP05_0017E"),#%white, %hisp, median age
+                      region = "county:*", 
+                      regionin = "state:24",
+                      key = cs_key)[-c(1:2)]
+
+count_md15 <- getCensus(name = "2015/acs/acs1/profile",
+                      vars = c("DP05_0032PE", "DP05_0066PE", "DP05_0017E"),#%white, %hisp, median age
+                      region = "county:*", 
+                      regionin = "state:24",
+                      key = cs_key)[-c(1:2)]
+
+count_md14 <- getCensus(name = "2014/acs/acs1/profile",
+                      vars = c("DP05_0032PE", "DP05_0066PE", "DP05_0017E"),#%white, %hisp, median age
+                      region = "county:*", 
+                      regionin = "state:24",
+                      key = cs_key)[-c(1:2)]
+
+count_md13 <- getCensus(name = "2013/acs/acs1/profile",
+                      vars = c("DP05_0032PE", "DP05_0066PE", "DP05_0017E"),#%white, %hisp, median age
+                      region = "county:*", 
+                      regionin = "state:24",
+                      key = cs_key)[-c(1:2)]
+
+count_md12 <- getCensus(name = "2012/acs/acs1/profile",
+                      vars = c("DP05_0032PE", "DP05_0066PE", "DP05_0017E"),#%white, %hisp, median age
+                      region = "county:*", 
+                      regionin = "state:24",
+                      key = cs_key)[-c(1:2)]
+
+count_md11 <- getCensus(name = "2011/acs/acs1/profile",
+                      vars = c("DP05_0032PE", "DP05_0066PE", "DP05_0017E"),#%white, %hisp, median age
+                      region = "county:*", 
+                      regionin = "state:24",
+                      key = cs_key)[-c(1:2)]
+
+count_md10 <- getCensus(name = "2010/acs/acs1/profile",
+                      vars =c("DP05_0032PE", "DP05_0066PE", "DP05_0017E"),#%white, %hisp, median age
+                      region = "county:*", 
+                      regionin = "state:24",
+                      key = cs_key)[-c(1:2)]
+
+
+#BNIA data, also from the guthub repository
+bnia_crosswalk <- read.csv("/Users/taliakaatz/Desktop/Computation & Data Display/Project Folder/CSA_to_NSA_2010.csv")
+
+#demographic data, read in as a separate dataset for each year
+bnia <- "/Users/taliakaatz/Desktop/Computation & Data Display/Project Folder/VS17_Indicators_2010_2017.xlsx"
+
+bnia2010 <- read_xlsx(bnia, sheet = "2010")
+bnia2011 <- read_xlsx(bnia, sheet = "2011")
+bnia2012 <- read_xlsx(bnia, sheet = "2012")
+bnia2013 <- read_xlsx(bnia, sheet = "2013")
+bnia2014 <- read_xlsx(bnia, sheet = "2014")
+bnia2015 <- read_xlsx(bnia, sheet = "2015")
+bnia2016 <- read_xlsx(bnia, sheet = "2016")
+bnia2017 <- read_xlsx(bnia, sheet = "2017")
+
+#shapefile for mapping
+bnia_sf <- st_read("/Users/taliakaatz/Desktop/Computation & Data Display/Project Folder/csa_2010_boundaries/CSA_NSA_Tracts.shp")
+
+#MD county map data, from 'maps' package
+md_map <- map_data("county", region = "maryland")
+
+
+```
+
+#Preprocessing
+##County-level data
+```{r, prepare county-level Zillow files}
+
+RVMD <-
+  county_rv %>% 
+    filter(State %in% "MD") %>%
+    gather(key = "date", value = "RentalValue", 8:117) %>%
+    select(-State, -StateCodeFIPS, -MunicipalCodeFIPS, -SizeRank) %>%
+    separate(date, into = c("year", "month"), sep = "-", remove = FALSE) %>%
+    filter(year %in% 2010:2018) %>%
+    arrange(RegionName, desc(date))
+
+HVMD <-
+  county_hv %>% 
+    filter(State %in% "MD") %>%
+    gather(key = "date", value = "HomeValue", 8:290) %>%
+    select(-State, -StateCodeFIPS, -MunicipalCodeFIPS, -SizeRank) %>%
+    separate(date, into = c("year", "month"), sep = "-", remove = FALSE) %>%
+    filter(year %in% 2010:2018) %>%
+    arrange(RegionName)
+```
+
+```{r, prepare ACS county data}
+
+
+count_md10$CountyName <- c("Allegany County","Anne Arundel County", "Baltimore County", "Calvert County", "Carroll County", "Cecil County", "Charles County", "Frederick County", "Harford County", "Howard County", "Montgomery County", "Prince George's County", "Saint Mary's County", "Washington County", "Wicomico County", "Baltimore City")
+
+count_md11$CountyName <- c("Allegany County","Anne Arundel County", "Baltimore County", "Calvert County", "Carroll County", "Cecil County", "Charles County", "Frederick County", "Harford County", "Howard County", "Montgomery County", "Prince George's County", "Saint Mary's County", "Washington County", "Wicomico County", "Baltimore City")
+
+count_md12$CountyName <- c("Allegany County","Anne Arundel County", "Baltimore County", "Calvert County", "Carroll County", "Cecil County", "Charles County", "Frederick County", "Harford County", "Howard County", "Montgomery County", "Prince George's County", "Saint Mary's County", "Washington County", "Wicomico County", "Baltimore City")
+
+count_md13$CountyName <- c("Allegany County","Anne Arundel County", "Baltimore County", "Calvert County", "Carroll County", "Cecil County", "Charles County", "Frederick County", "Harford County", "Howard County", "Montgomery County", "Prince George's County", "Saint Mary's County", "Washington County", "Wicomico County", "Baltimore City")
+
+count_md14$CountyName <- c("Allegany County","Anne Arundel County", "Baltimore County", "Calvert County", "Carroll County", "Cecil County", "Charles County", "Frederick County", "Harford County", "Howard County", "Montgomery County", "Prince George's County", "Saint Mary's County", "Washington County", "Wicomico County", "Baltimore City")
+
+count_md15$CountyName <- c("Allegany County","Anne Arundel County", "Baltimore County", "Calvert County", "Carroll County", "Cecil County", "Charles County", "Frederick County", "Harford County", "Howard County", "Montgomery County", "Prince George's County", "Saint Mary's County", "Washington County", "Wicomico County", "Baltimore City")
+
+count_md16$CountyName <- c("Allegany County","Anne Arundel County", "Baltimore County", "Calvert County", "Carroll County", "Cecil County", "Charles County", "Frederick County", "Harford County", "Howard County", "Montgomery County", "Prince George's County", "Saint Mary's County", "Washington County", "Wicomico County", "Baltimore City")
+
+count_md17$CountyName <- c("Allegany County","Anne Arundel County", "Baltimore County", "Calvert County", "Carroll County", "Cecil County", "Charles County", "Frederick County", "Harford County", "Howard County", "Montgomery County", "Prince George's County", "Saint Mary's County", "Washington County", "Wicomico County", "Baltimore City")
+
+count_md18$CountyName <- c("Allegany County","Anne Arundel County", "Baltimore County", "Calvert County", "Carroll County", "Cecil County", "Charles County", "Frederick County", "Harford County", "Howard County", "Montgomery County", "Prince George's County", "Saint Mary's County", "Washington County", "Wicomico County", "Baltimore City")
+
+
+
+```
+
+```{r, write ACS data to new variables in Zillow data files}
+HVMD$nonwhite <- NA
+HVMD$hispanic <- NA
+HVMD$medianage <- NA
+RVMD$nonwhite <- NA
+RVMD$hispanic <- NA
+RVMD$medianage <- NA
+
+for(i in 1:length(HVMD$RegionName)){
+  if(HVMD$RegionName[i] %in% count_md10$CountyName){
+    if(HVMD$year[i] == 2010){
+      HVMD$nonwhite[i] <- 100 - count_md10$DP05_0032PE[count_md10$CountyName == HVMD$RegionName[i]]
+      HVMD$hispanic[i] <- count_md10$DP05_0066PE[count_md10$CountyName == HVMD$RegionName[i]]
+      HVMD$medianage[i] <- count_md10$DP05_0017E[count_md10$CountyName == HVMD$RegionName[i]]
+    }
+    else if(HVMD$year[i] == 2011){
+      HVMD$nonwhite[i] <- 100 - count_md11$DP05_0032PE[count_md11$CountyName == HVMD$RegionName[i]]
+      HVMD$hispanic[i] <- count_md11$DP05_0066PE[count_md11$CountyName == HVMD$RegionName[i]]
+      HVMD$medianage[i] <- count_md11$DP05_0017E[count_md11$CountyName == HVMD$RegionName[i]]
+    }
+    else if(HVMD$year[i] == 2012){
+      HVMD$nonwhite[i] <- 100 - count_md12$DP05_0032PE[count_md12$CountyName == HVMD$RegionName[i]]
+      HVMD$hispanic[i] <- count_md12$DP05_0066PE[count_md12$CountyName == HVMD$RegionName[i]]
+      HVMD$medianage[i] <- count_md12$DP05_0017E[count_md12$CountyName == HVMD$RegionName[i]]
+    }
+    else if(HVMD$year[i] == 2013){
+      HVMD$nonwhite[i] <- 100 - count_md13$DP05_0032PE[count_md13$CountyName == HVMD$RegionName[i]]
+      HVMD$hispanic[i] <- count_md13$DP05_0066PE[count_md13$CountyName == HVMD$RegionName[i]]
+      HVMD$medianage[i] <- count_md13$DP05_0017E[count_md13$CountyName == HVMD$RegionName[i]]
+    }
+    else if(HVMD$year[i] == 2014){
+      HVMD$nonwhite[i] <- 100 - count_md14$DP05_0032PE[count_md14$CountyName == HVMD$RegionName[i]]
+      HVMD$hispanic[i] <- count_md14$DP05_0066PE[count_md14$CountyName == HVMD$RegionName[i]]
+      HVMD$medianage[i] <- count_md14$DP05_0017E[count_md14$CountyName == HVMD$RegionName[i]]
+    }
+    else if(HVMD$year[i] == 2015){
+      HVMD$nonwhite[i] <- 100 - count_md15$DP05_0032PE[count_md15$CountyName == HVMD$RegionName[i]]
+      HVMD$hispanic[i] <- count_md15$DP05_0066PE[count_md15$CountyName == HVMD$RegionName[i]]
+      HVMD$medianage[i] <- count_md15$DP05_0017E[count_md15$CountyName == HVMD$RegionName[i]]
+    }
+    else if(HVMD$year[i] == 2016){
+      HVMD$nonwhite[i] <- 100 - count_md16$DP05_0032PE[count_md16$CountyName == HVMD$RegionName[i]]
+      HVMD$hispanic[i] <- count_md16$DP05_0066PE[count_md16$CountyName == HVMD$RegionName[i]]
+      HVMD$medianage[i] <- count_md16$DP05_0017E[count_md16$CountyName == HVMD$RegionName[i]]
+    }
+    else if(HVMD$year[i] == 2017){
+      HVMD$nonwhite[i] <- 100 - count_md17$DP05_0037PE [count_md17$CountyName == HVMD$RegionName[i]]
+      HVMD$hispanic[i] <- count_md17$DP05_0071PE[count_md17$CountyName == HVMD$RegionName[i]]
+      HVMD$medianage[i] <- count_md17$DP05_0018E[count_md17$CountyName == HVMD$RegionName[i]]
+    }
+    else if(HVMD$year[i] == 2018){
+      HVMD$nonwhite[i] <- 100 - count_md18$DP05_0037PE[count_md18$CountyName == HVMD$RegionName[i]]
+      HVMD$hispanic[i] <- count_md18$DP05_0071PE[count_md18$CountyName == HVMD$RegionName[i]]
+      HVMD$medianage[i] <- count_md18$DP05_0018E[count_md18$CountyName == HVMD$RegionName[i]]
+    }
+    
+  }
+}
+
+for(i in 1:length(RVMD$RegionName)){
+  if(RVMD$RegionName[i] %in% count_md10$CountyName){
+    if(RVMD$year[i] == 2010){
+      RVMD$nonwhite[i] <- 100 - count_md10$DP05_0032PE[count_md10$CountyName == RVMD$RegionName[i]]
+      RVMD$hispanic[i] <- count_md10$DP05_0066PE[count_md10$CountyName == RVMD$RegionName[i]]
+      RVMD$medianage[i] <- count_md10$DP05_0017E[count_md10$CountyName == RVMD$RegionName[i]]
+    }
+    else if(RVMD$year[i] == 2011){
+      RVMD$nonwhite[i] <- 100 - count_md11$DP05_0032PE[count_md11$CountyName == RVMD$RegionName[i]]
+      RVMD$hispanic[i] <- count_md11$DP05_0066PE[count_md11$CountyName == RVMD$RegionName[i]]
+      RVMD$medianage[i] <- count_md11$DP05_0017E[count_md11$CountyName == RVMD$RegionName[i]]
+    }
+    else if(RVMD$year[i] == 2012){
+      RVMD$nonwhite[i] <- 100 - count_md12$DP05_0032PE[count_md12$CountyName == RVMD$RegionName[i]]
+      RVMD$hispanic[i] <- count_md12$DP05_0066PE[count_md12$CountyName == RVMD$RegionName[i]]
+      RVMD$medianage[i] <- count_md12$DP05_0017E[count_md12$CountyName == RVMD$RegionName[i]]
+    }
+    else if(RVMD$year[i] == 2013){
+      RVMD$nonwhite[i] <- 100 - count_md13$DP05_0032PE[count_md13$CountyName == RVMD$RegionName[i]]
+      RVMD$hispanic[i] <- count_md13$DP05_0066PE[count_md13$CountyName == RVMD$RegionName[i]]
+      RVMD$medianage[i] <- count_md13$DP05_0017E[count_md13$CountyName == RVMD$RegionName[i]]
+    }
+    else if(RVMD$year[i] == 2014){
+      RVMD$nonwhite[i] <- 100 - count_md14$DP05_0032PE[count_md14$CountyName == RVMD$RegionName[i]]
+      RVMD$hispanic[i] <- count_md14$DP05_0066PE[count_md14$CountyName == RVMD$RegionName[i]]
+      RVMD$medianage[i] <- count_md14$DP05_0017E[count_md14$CountyName == RVMD$RegionName[i]]
+    }
+    else if(RVMD$year[i] == 2015){
+      RVMD$nonwhite[i] <- 100 - count_md15$DP05_0032PE[count_md15$CountyName == RVMD$RegionName[i]]
+      RVMD$hispanic[i] <- count_md15$DP05_0066PE[count_md15$CountyName == RVMD$RegionName[i]]
+      RVMD$medianage[i] <- count_md15$DP05_0017E[count_md15$CountyName == RVMD$RegionName[i]]
+    }
+    else if(RVMD$year[i] == 2016){
+      RVMD$nonwhite[i] <- 100 - count_md16$DP05_0032PE[count_md16$CountyName == RVMD$RegionName[i]]
+      RVMD$hispanic[i] <- count_md16$DP05_0066PE[count_md16$CountyName == RVMD$RegionName[i]]
+      RVMD$medianage[i] <- count_md16$DP05_0017E[count_md16$CountyName == RVMD$RegionName[i]]
+    }
+    else if(RVMD$year[i] == 2017){
+      RVMD$nonwhite[i] <- 100 - count_md17$DP05_0037PE [count_md17$CountyName == RVMD$RegionName[i]]
+      RVMD$hispanic[i] <- count_md17$DP05_0071PE[count_md17$CountyName == RVMD$RegionName[i]]
+      RVMD$medianage[i] <- count_md17$DP05_0018E[count_md17$CountyName == RVMD$RegionName[i]]
+    }
+    else if(RVMD$year[i] == 2018){
+      RVMD$nonwhite[i] <- 100 - count_md18$DP05_0037PE[count_md18$CountyName == RVMD$RegionName[i]]
+      RVMD$hispanic[i] <- count_md18$DP05_0071PE[count_md18$CountyName == RVMD$RegionName[i]]
+      RVMD$medianage[i] <- count_md18$DP05_0018E[count_md18$CountyName == RVMD$RegionName[i]]
+    }
+    
+  }
+}
+HVMD$nonwhite[HVMD$nonwhite > 100] <- NA
+RVMD$nonwhite[RVMD$nonwhite > 100] <- NA
+
+combinedMD <- 
+  HVMD %>%
+    left_join(RVMD, by = c("RegionName", "date"))
+
+```
+#Preprocessing
+##Neighborhood-level data 
+```{r, prepare neighborhood-level Zillow data}
+
+RVBM  <-
+  nhood_rv %>% 
+    filter(City %in% "Baltimore" & State %in% "MD") %>%
+    gather(key = "date", value = "RentalValue", 8:117) %>%
+    select(-State, -Metro, -City, -CountyName) %>%
+    separate(date, into = c("year", "month"), sep = "-", remove = FALSE) %>%
+    filter(year %in% 2010:2018) %>%
+    arrange(RegionName, desc(date))
+
+HVBM <-
+  nhood_hv %>% 
+    filter(City %in% "Baltimore") %>%
+    gather(key = "date", value = "HomeValue", 8:290) %>%
+    select(-State, -Metro, -City, -CountyName) %>%
+    separate(date, into = c("year", "month"), sep = "-", remove = FALSE) %>%
+    filter(year %in% 2010:2018) %>%
+    arrange(RegionName, desc(date))
+
+#check whether neighborhood names line up between rental and home value files
+
+countynames <- unique(RVBM$RegionName)
+rent_hoods <- countynames[!(countynames %in% HVBM$RegionName)]
+
+countynames2 <- unique(HVBM$RegionName)
+home_hoods <- countynames2[!(countynames2 %in% RVBM$RegionName)]
+
+print(rent_hoods)
+print(home_hoods)
+#evidence of significant differences in the neighborhoods present in each file
+
+```
+
+Standardize crosswalk and zillow files and merge by neighborhood
+
+```{r, merge neighborhood crosswalk file to Zillow data}
+
+#create uniform neighborhood name variables in each dataset
+  
+bnia_crosswalk %<>% 
+  mutate(NHOOD = trimws(toupper(NSA2010))) %>%
+  select(-NSA2010)
+  
+HVBM %<>%
+  mutate(NHOOD = trimws(toupper(RegionName)))
+
+RVBM %<>%
+  mutate(NHOOD = trimws(toupper(RegionName))) 
+
+#merge crosswalk to home and rental value data and identify unmatched neighborhood names
+HVBM %>%
+  left_join(bnia_crosswalk, by = "NHOOD") %>%
+  filter(is.na(CSA2010)) %>%
+  distinct(NHOOD)
+
+RVBM %>%
+  left_join(bnia_crosswalk, by = "NHOOD") %>%
+  filter(is.na(CSA2010)) %>%
+  distinct(NHOOD)
+
+#fix unmatched neighborhood names (update in Zillow file to match crosswalk): 
+
+HVBM %<>%
+  mutate(NHOOD = gsub("CHINQUAPIN PARK-BELVEDERE", "CHINQUAPIN PARK", NHOOD)) %>%
+  mutate(NHOOD = gsub("HARFORD-ECHODALE - PERRING PARKWAY", "HARFORD-ECHODALE/PERRING PARKWAY", NHOOD)) %>%
+  mutate(NHOOD = gsub("JOSEPH LEE", "BAYVIEW", NHOOD)) %>%
+  mutate(NHOOD = gsub("MOUNT WASHINGTON", "MT. WASHINGTON", NHOOD)) %>%
+  mutate(NHOOD = gsub("NORTH ROLAND PARK - POPLAR HILL", "NORTH ROLAND PARK/POPLAR HILL", NHOOD)) %>%
+  mutate(NHOOD = gsub("SBIC", "SOUTH BALTIMORE", NHOOD)) %>%
+  mutate(NHOOD = gsub("WOODRING", "WESTFIELD", NHOOD))
+
+
+RVBM %<>%
+  mutate(NHOOD = gsub("COPPIN HEIGHTS - ASH-CO-EAST", "COPPIN HEIGHTS/ASH-CO-EAST", NHOOD)) %>%
+  mutate(NHOOD = gsub("ELLWOOD PARK-MONUMENT", "ELLWOOD PARK/MONUMENT", NHOOD)) %>%
+  mutate(NHOOD = gsub("HARFORD-ECHODALE - PERRING PARKWAY", "HARFORD-ECHODALE/PERRING PARKWAY", NHOOD)) %>%
+  mutate(NHOOD = gsub("MONDAWIN", "MONDAWMIN", NHOOD)) %>%
+  mutate(NHOOD = gsub("MOUNT WASHINGTON", "MT. WASHINGTON", NHOOD)) %>%
+  mutate(NHOOD = gsub("NEW SOUTHWEST - MOUNT CLARE", "NEW SOUTHWEST/MT. CLARE", NHOOD)) %>%
+  mutate(NHOOD = gsub("PENROSE-FAYETTE STREET OUTREACH", "PENROSE/FAYETTE STREET OUTREACH", NHOOD)) %>%
+  mutate(NHOOD = gsub("SBIC", "SOUTH BALTIMORE", NHOOD)) %>%
+  mutate(NHOOD = gsub("WASHINGTON VILLAGE", "WASHINGTON VILLAGE/PIGTOWN", NHOOD)) %>%
+  mutate(NHOOD = gsub("WOODRING", "WESTFIELD", NHOOD))
+
+#merge and check again with updated neighborhoods -- looks good! 
+
+HVBM %>%
+  left_join(bnia_crosswalk, by = "NHOOD") %>%
+  filter(is.na(CSA2010)) %>%
+  distinct(NHOOD)
+
+RVBM %>%
+  left_join(bnia_crosswalk, by = "NHOOD") %>%
+  filter(is.na(CSA2010)) %>%
+  distinct(NHOOD)
+
+#merge CSA names from crosswalk to datasets
+
+HVBM %<>% left_join(bnia_crosswalk, by = "NHOOD")
+
+RVBM %<>% left_join(bnia_crosswalk, by = "NHOOD")
+
+#adjust some CSA names to match formatting to BNIA demographic files
+
+RVBM %<>%
+  mutate(CSA2010 = gsub("Allendale/Irvington/South Hilton", "Allendale/Irvington/S. Hilton", CSA2010)) %>%
+  mutate(CSA2010 = gsub("Glen-Falstaff", "Glen-Fallstaff", CSA2010)) %>%
+  mutate(CSA2010 = gsub("Westport/Mt. Winans/Lakeland", "Westport/Mount Winans/Lakeland", CSA2010)) %>%
+  mutate(CSA2010 = gsub("Mt. Washington/Coldspring", "Mount Washington/Coldspring", CSA2010))
+
+HVBM %<>%
+  mutate(CSA2010 = gsub("Allendale/Irvington/South Hilton", "Allendale/Irvington/S. Hilton", CSA2010)) %>%
+  mutate(CSA2010 = gsub("Glen-Falstaff", "Glen-Fallstaff", CSA2010)) %>%
+  mutate(CSA2010 = gsub("Westport/Mt. Winans/Lakeland", "Westport/Mount Winans/Lakeland", CSA2010)) %>%
+  mutate(CSA2010 = gsub("Mt. Washington/Coldspring", "Mount Washington/Coldspring", CSA2010))
+
+```
+
+Prepare BNIA demographic files for merge
+
+```{r, prepare BNIA demographic files}
+
+#in file for each year, subset to variables of interest and rename
+
+#2010
+bnia_vars <- colnames(bnia2010[, c("CSA2010", "Percent of Residents - White/Caucasian (Non-Hispanic)", "Percent of Residents - Hispanic", "Percent of Population 18-24 Years old", "Median Price of Homes Sold", "Affordability Index - Mortgage", "Affordability Index - Rent")])
+new_varnames <- c("CSA2010", "nonwhite10", "hispanic10", "percentya10", "mediansold10", "ai_mortgage10", "ai_rent10")
+
+bnia2010 %<>%
+  select(bnia_vars) %>%
+  set_colnames(new_varnames) %>%
+  mutate(nonwhite10 = (100 - nonwhite10))
+
+#2011
+bnia_vars <- c("CSA2010", "Median Price of Homes Sold", "Affordability Index - Mortgage", "Affordability Index - Rent")
+new_varnames <- c("CSA2010", "mediansold11", "ai_mortgage11", "ai_rent11")
+
+bnia2011 %<>%
+  select(bnia_vars) %>%
+  set_colnames(new_varnames)
+
+#2012
+bnia_vars <- c("CSA2010", "Median Price of Homes Sold", "Affordability Index - Mortgage", "Affordability Index - Rent")
+new_varnames <- c("CSA2010", "mediansold12", "ai_mortgage12", "ai_rent12")
+
+bnia2012 %<>%
+  select(bnia_vars) %>%
+  set_colnames(new_varnames)
+
+#2013
+bnia_vars <- c("CSA2010", "Median Price of Homes Sold", "Affordability Index - Mortgage", "Affordability Index - Rent")
+new_varnames <- c("CSA2010", "mediansold13", "ai_mortgage13", "ai_rent13")
+
+bnia2013 %<>%
+  select(bnia_vars) %>%
+  set_colnames(new_varnames)
+
+#2014
+bnia_vars <- c("CSA2010", "Median Price of Homes Sold", "Affordability Index - Mortgage", "Affordability Index - Rent")
+new_varnames <- c("CSA2010", "mediansold14", "ai_mortgage14", "ai_rent14")
+
+bnia2014 %<>%
+  select(bnia_vars) %>%
+  set_colnames(new_varnames)
+
+#2015
+bnia_vars <- c("CSA2010", "Median Price of Homes Sold", "Affordability Index - Mortgage", "Affordability Index - Rent")
+new_varnames <- c("CSA2010", "mediansold15", "ai_mortgage15", "ai_rent15")
+
+bnia2015 %<>%
+  select(bnia_vars) %>%
+  set_colnames(new_varnames)
+
+#2016
+bnia_vars <- colnames(bnia2016[, c("CSA2010", "Percent of Residents - White/Caucasian (Non-Hispanic)", "Percent of Residents - Hispanic", "Percent of Population 18-24 years old", "Median Price of Homes Sold", "Affordability Index - Mortgage", "Affordability Index - Rent")])
+new_varnames <- c("CSA2010", "nonwhite16", "hispanic16", "percentya16", "mediansold16", "ai_mortgage16", "ai_rent16")
+
+bnia2016 %<>%
+  select(bnia_vars) %>%
+  set_colnames(new_varnames) %>%
+  mutate(nonwhite16 = (100 - nonwhite16))
+
+#2017
+bnia_vars <- colnames(bnia2017[, c("CSA2010", "Percent of Residents - White/Caucasian (Non-Hispanic)", "Percent of Residents - Hispanic", "Percent of Population 18-24 years old", "Median Price of Homes Sold", "Affordability Index - Mortgage", "Affordability Index - Rent")])
+new_varnames <- c("CSA2010", "nonwhite17", "hispanic17", "percentya17", "mediansold17", "ai_mortgage17", "ai_rent17")
+
+bnia2017 %<>%
+  select(bnia_vars) %>%
+  set_colnames(new_varnames) %>%
+  mutate(nonwhite17 = (100 - nonwhite17))
+
+```
+
+```{r, merge BNIA to Zillow files}
+
+RVBM %<>%
+  left_join(bnia2010, by = "CSA2010") %>%
+  left_join(bnia2011, by = "CSA2010") %>%
+  left_join(bnia2012, by = "CSA2010") %>%
+  left_join(bnia2013, by = "CSA2010") %>%
+  left_join(bnia2014, by = "CSA2010") %>%
+  left_join(bnia2015, by = "CSA2010") %>%
+  left_join(bnia2016, by = "CSA2010") %>%
+  left_join(bnia2017, by = "CSA2010")
+
+HVBM %<>%
+  left_join(bnia2010, by = "CSA2010") %>%
+  left_join(bnia2011, by = "CSA2010") %>%
+  left_join(bnia2012, by = "CSA2010") %>%
+  left_join(bnia2013, by = "CSA2010") %>%
+  left_join(bnia2014, by = "CSA2010") %>%
+  left_join(bnia2015, by = "CSA2010") %>%
+  left_join(bnia2016, by = "CSA2010") %>%
+  left_join(bnia2017, by = "CSA2010")
+
+```
+
+```{r, prepare "long-format" demographic variables}
+
+
+RVBM$nonwhite <- ifelse(RVBM$year == 2010, RVBM$nonwhite10,
+                        ifelse(RVBM$year == 2016, RVBM$nonwhite16,
+                               ifelse(RVBM$year == 2017, RVBM$nonwhite17, "NA")))
+
+RVBM$hispanic <- ifelse(RVBM$year == 2010, RVBM$hispanic10,
+                        ifelse(RVBM$year == 2016, RVBM$hispanic16,
+                               ifelse(RVBM$year == 2017, RVBM$hispanic17, "NA")))
+
+RVBM$percentya <- ifelse(RVBM$year == 2010, RVBM$percentya10,
+                        ifelse(RVBM$year == 2016, RVBM$percentya16,
+                               ifelse(RVBM$year == 2017, RVBM$percentya17, "NA")))
+
+RVBM$mediansold <- ifelse(RVBM$year == 2010, RVBM$mediansold10,
+                          ifelse(RVBM$year == 2011, RVBM$mediansold11,
+                            ifelse(RVBM$year == 2012, RVBM$mediansold12,
+                              ifelse(RVBM$year == 2013, RVBM$mediansold13,
+                                ifelse(RVBM$year == 2014, RVBM$mediansold14,
+                                  ifelse(RVBM$year == 2015, RVBM$mediansold15,
+                                   ifelse(RVBM$year == 2016, RVBM$mediansold16,
+                                      ifelse(RVBM$year == 2017, RVBM$mediansold17, "NA"))))))))
+
+RVBM$ai_mortgage <- ifelse(RVBM$year == 2010, RVBM$ai_mortgage10,
+                          ifelse(RVBM$year == 2011, RVBM$ai_mortgage11,
+                            ifelse(RVBM$year == 2012, RVBM$ai_mortgage12,
+                              ifelse(RVBM$year == 2013, RVBM$ai_mortgage13,
+                                ifelse(RVBM$year == 2014, RVBM$ai_mortgage14,
+                                  ifelse(RVBM$year == 2015, RVBM$ai_mortgage15,
+                                   ifelse(RVBM$year == 2016, RVBM$ai_mortgage16,
+                                      ifelse(RVBM$year == 2017, RVBM$ai_mortgage17, "NA"))))))))
+
+RVBM$ai_rent <- ifelse(RVBM$year == 2010, RVBM$ai_rent10,
+                          ifelse(RVBM$year == 2011, RVBM$ai_rent11,
+                            ifelse(RVBM$year == 2012, RVBM$ai_rent12,
+                              ifelse(RVBM$year == 2013, RVBM$ai_rent13,
+                                ifelse(RVBM$year == 2014, RVBM$ai_rent14,
+                                  ifelse(RVBM$year == 2015, RVBM$ai_rent15,
+                                   ifelse(RVBM$year == 2016, RVBM$ai_rent16,
+                                      ifelse(RVBM$year == 2017, RVBM$ai_rent17, "NA"))))))))
+
+#HVBM
+HVBM$nonwhite <- ifelse(HVBM$year == 2010, HVBM$nonwhite10,
+                        ifelse(HVBM$year == 2016, HVBM$nonwhite16,
+                               ifelse(HVBM$year == 2017, HVBM$nonwhite17, "NA")))
+
+HVBM$hispanic <- ifelse(HVBM$year == 2010, HVBM$hispanic10,
+                        ifelse(HVBM$year == 2016, HVBM$hispanic16,
+                               ifelse(HVBM$year == 2017, HVBM$hispanic17, "NA")))
+
+HVBM$percentya <- ifelse(HVBM$year == 2010, HVBM$percentya10,
+                        ifelse(HVBM$year == 2016, HVBM$percentya16,
+                               ifelse(HVBM$year == 2017, HVBM$percentya17, "NA")))
+
+HVBM$mediansold <- ifelse(HVBM$year == 2010, HVBM$mediansold10,
+                          ifelse(HVBM$year == 2011, HVBM$mediansold11,
+                            ifelse(HVBM$year == 2012, HVBM$mediansold12,
+                              ifelse(HVBM$year == 2013, HVBM$mediansold13,
+                                ifelse(HVBM$year == 2014, HVBM$mediansold14,
+                                  ifelse(HVBM$year == 2015, HVBM$mediansold15,
+                                   ifelse(HVBM$year == 2016, HVBM$mediansold16,
+                                      ifelse(HVBM$year == 2017, HVBM$mediansold17, "NA"))))))))
+
+HVBM$ai_mortgage <- ifelse(HVBM$year == 2010, HVBM$ai_mortgage10,
+                          ifelse(HVBM$year == 2011, HVBM$ai_mortgage11,
+                            ifelse(HVBM$year == 2012, HVBM$ai_mortgage12,
+                              ifelse(HVBM$year == 2013, HVBM$ai_mortgage13,
+                                ifelse(HVBM$year == 2014, HVBM$ai_mortgage14,
+                                  ifelse(HVBM$year == 2015, HVBM$ai_mortgage15,
+                                   ifelse(HVBM$year == 2016, HVBM$ai_mortgage16,
+                                      ifelse(HVBM$year == 2017, HVBM$ai_mortgage17, "NA"))))))))
+
+HVBM$ai_rent <- ifelse(HVBM$year == 2010, HVBM$ai_rent10,
+                          ifelse(HVBM$year == 2011, HVBM$ai_rent11,
+                            ifelse(HVBM$year == 2012, HVBM$ai_rent12,
+                              ifelse(HVBM$year == 2013, HVBM$ai_rent13,
+                                ifelse(HVBM$year == 2014, HVBM$ai_rent14,
+                                  ifelse(HVBM$year == 2015, HVBM$ai_rent15,
+                                   ifelse(HVBM$year == 2016, HVBM$ai_rent16,
+                                      ifelse(HVBM$year == 2017, HVBM$ai_rent17, "NA"))))))))
+
+RVBM %<>% 
+  mutate_at(c("nonwhite", "hispanic", "percentya", "mediansold", "ai_mortgage", "ai_rent"), as.numeric)
+
+HVBM %<>% 
+  mutate_at(c("nonwhite", "hispanic", "percentya", "mediansold", "ai_mortgage", "ai_rent"), as.numeric)
+
+```
+
+#Results
+
+Maps comparing comparing Baltimore City distributions (across Community Statistical Areas) of different measures of housing values and affordability, as well as age and race distributions. Maps shown are for January 2010 and January 2017.
+
+```{r}
+
+bnia_sf %>%
+  mutate(CSA2010 = Community) %>%
+  left_join(HVBM, by = "CSA2010") %>%
+  filter(year == c("2017", "2010")) %>%
+  ggplot() +
+    geom_sf(aes(fill = HomeValue)) +
+    facet_wrap(~year)
+
+```
+
+```{r}
+bnia_sf %>%
+  mutate(CSA2010 = Community) %>%
+  left_join(RVBM, by = "CSA2010") %>%
+  filter(year == c("2017", "2010")) %>%
+  ggplot() +
+    geom_sf(aes(fill = RentalValue)) +
+    facet_wrap(~year)
+
+bnia_sf %>%
+  mutate(CSA2010 = Community) %>%
+  left_join(RVBM, by = "CSA2010") %>%
+  filter(year == c("2017", "2010")) %>%
+  ggplot() +
+    geom_sf(aes(fill = mediansold)) +
+    facet_wrap(~year)
+
+bnia_sf %>%
+  mutate(CSA2010 = Community) %>%
+  left_join(RVBM, by = "CSA2010") %>%
+  filter(year == c("2017", "2010")) %>%
+  ggplot() +
+    geom_sf(aes(fill = ai_mortgage)) +
+    facet_wrap(~year)
+
+bnia_sf %>%
+  mutate(CSA2010 = Community) %>%
+  left_join(RVBM, by = "CSA2010") %>%
+  filter(year == c("2017", "2010")) %>%
+  ggplot() +
+    geom_sf(aes(fill = ai_rent)) +
+    facet_wrap(~year)
+
+bnia_sf %>%
+  mutate(CSA2010 = Community) %>%
+  left_join(RVBM, by = "CSA2010") %>%
+  filter(year == c("2017", "2010")) %>%
+  ggplot() +
+    geom_sf(aes(fill = percentya)) +
+    facet_wrap(~year)
+
+bnia_sf %>%
+  mutate(CSA2010 = Community) %>%
+  left_join(RVBM, by = "CSA2010") %>%
+  filter(year == c("2017", "2010")) %>%
+  ggplot() +
+    geom_sf(aes(fill = nonwhite)) +
+    facet_wrap(~year)
+
+
+```
+
+Visualizations for H1: County-level rental values will show a greater increase over time than housing values over the same period
+
+```{r}
+
+year_breaks <- c("2010-01", "2011-01", "2012-01", "2013-01", "2014-01", "2015-01", "2016-01", "2017-01", "2018-01")
+
+combinedMD %>%
+  mutate(hrv_ratio = (RentalValue/(HomeValue/1000))) %>%
+  filter(Metro.x %in% "Baltimore-Columbia-Towson") %>%
+  ggplot() +
+  geom_jitter(aes(x = date, y = hrv_ratio , group = RegionName, color = RegionName)) + 
+  ggtitle("Change in Rental-to-Homevalue Ratio Over Time in Baltimore Metro") + 
+  scale_x_discrete("Date", c('2010', year_breaks, year_breaks)) + 
+  ylab("Ratio of rental values to home values")
+
+combinedMD %>%
+  filter(Metro.x %in% "Baltimore-Columbia-Towson") %>%
+  ggplot() +
+  geom_jitter(aes(x = date, y = RentalValue , group = RegionName, color = RegionName)) + 
+  ggtitle("Rental Values Over Time in Baltimore Metro") + 
+  scale_x_discrete("Date", c('2010', year_breaks, year_breaks)) + 
+  ylab("Average rental Values (monthly rent in $)")
+
+combinedMD %>%
+  filter(Metro.x %in% "Baltimore-Columbia-Towson") %>%
+  ggplot() +
+  geom_jitter(aes(x = date, y = (HomeValue/1000) , group = RegionName, color = RegionName)) + 
+  ggtitle("Home Values Ratio Over Time in Baltimore Metro") + 
+  scale_x_discrete("Date", c('2010', year_breaks, year_breaks)) + 
+  ylab("Average home value (in thousands)")
+
+```
+
+Visualizations for H2: This effect will be more pronounced in urban than in rural counties
+
+```{r}
+
+#map filling MD counties by average rental values in Jan 2019
+HVMD %>%
+    left_join(RVMD, by = c("RegionName", "date")) %>%
+    mutate(hrv_ratio = (RentalValue/(HomeValue/1000))) %>%
+    mutate(subregion = gsub(" County", "", RegionName)) %>%
+    mutate(subregion = tolower(subregion)) %>%
+    right_join(md_map, by = "subregion") %>%
+    filter(date %in% c("2018-12", "2015-12")) %>%
+    ggplot() + 
+      geom_polygon(aes(x = long, y = lat, group = subregion, fill = hrv_ratio)) +
+      facet_wrap(~date, scale = "free") +
+      ggtitle("MD Rental-to-HomeValue Ratios in Dec. 2015 and Dec. 2018") +
+      scale_fill_continuous(name = "RTHV Ratio")
+
+
+```
+
+Visualizations for H3: Areas with younger populations will have higher rental values (compared to housing values) than areas with older populations
+
+```{r}
+#Visualize relationships between age and race make-up of community and average home and rent values in community. Charts created with both Zillow data and BNIA data for comparison purposes. Data for 2016-17
+
+HVBM %>%
+  filter(year %in% c("2016", "2017")) %>%
+  mutate(nw_binary = ifelse(nonwhite <= 50, 0, 1)) %>%
+  ggplot() +
+  geom_jitter(aes(x = percentya, y = HomeValue/1000 , group = RegionName, color = as.factor(nw_binary))) + ggtitle("Home Value by Percent of Population 18-24 Years Old") + xlab("Percent of Population 18-24 Years Old") + ylab("Average home value (in thousands)")
+
+
+RVBM %>%
+  filter(year %in% c("2016", "2017")) %>%
+  mutate(nw_binary = ifelse(nonwhite <= 50, 0, 1)) %>%
+  ggplot() +
+  geom_jitter(aes(x = percentya, y = RentalValue , group = RegionName, color = as.factor(nw_binary))) +
+  ggtitle("Home Value by Percent of Population 18-24 Years Old") + 
+  xlab("Percent of Population 18-24 Years Old") + 
+  ylab("Average monthly rent")
+
+RVBM %>%
+  filter(year %in% c("2016", "2017")) %>%
+  mutate(nw_binary = ifelse(nonwhite <= 50, 0, 1)) %>%
+  ggplot() +
+  geom_jitter(aes(x = percentya, y = ai_mortgage , group = RegionName, color = as.factor(nw_binary))) +
+  ggtitle("Percent of population paying more than 30% of income toward mortgage/related expenses") +
+  xlab("Percent of Population 18-24 Years Old") + 
+  ylab("Percent of population paying more than 30% of income toward mortgage/related expenses")
+
+RVBM %>%
+  filter(year %in% c("2016", "2017")) %>%
+  mutate(nw_binary = ifelse(nonwhite <= 50, 0, 1)) %>%
+  ggplot() +
+  geom_jitter(aes(x = percentya, y = ai_rent, group = RegionName, color = as.factor(nw_binary))) + 
+  ggtitle("Average Rent by Percent of Population 18-24 Years Old") + xlab("Percent of Population 18-24 Years Old") +
+  ylab("Percent of population paying more than 30% of income toward rent/related expenses")
+
+```
+
+Visualizations for H4: Increases over time in home and rental values will be associated with decreases in the proportion of non-white residents
+
+```{r}
+
+```
+
+#Discussion
+
