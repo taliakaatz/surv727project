@@ -741,7 +741,8 @@ HVBM %>%
   filter(year %in% c("2016", "2017")) %>%
   mutate(nw_binary = ifelse(nonwhite <= 50, 0, 1)) %>%
   ggplot() +
-  geom_jitter(aes(x = percentya, y = HomeValue/1000 , group = RegionName, color = as.factor(nw_binary))) + ggtitle("Home Value by Percent of Population 18-24 Years Old") + xlab("Percent of Population 18-24 Years Old") + ylab("Average home value (in thousands)")
+  geom_jitter(aes(x = percentya, y = HomeValue/1000 , group = RegionName, color = as.factor(nw_binary))) + ggtitle("Zillow Home Value by Percent of Population 18-24 Years Old") + xlab("Percent of Population 18-24 Years Old") + ylab("Average home value (in thousands)") +
+  scale_color_discrete(name = "Percentage of population nonwhite", labels = c("More than 50% nonwhite", "50% nonwhite or less"))
 
 
 RVBM %>%
@@ -749,26 +750,29 @@ RVBM %>%
   mutate(nw_binary = ifelse(nonwhite <= 50, 0, 1)) %>%
   ggplot() +
   geom_jitter(aes(x = percentya, y = RentalValue , group = RegionName, color = as.factor(nw_binary))) +
-  ggtitle("Home Value by Percent of Population 18-24 Years Old") + 
+  ggtitle("Zillow Rental Value by Percent of Population 18-24 Years Old") + 
   xlab("Percent of Population 18-24 Years Old") + 
-  ylab("Average monthly rent")
+  ylab("Zillow Rental Value") +
+  scale_color_discrete(name = "Percentage of population nonwhite", labels = c("More than 50% nonwhite", "50% nonwhite or less"))
 
 RVBM %>%
   filter(year %in% c("2016", "2017")) %>%
   mutate(nw_binary = ifelse(nonwhite <= 50, 0, 1)) %>%
   ggplot() +
   geom_jitter(aes(x = percentya, y = ai_mortgage , group = RegionName, color = as.factor(nw_binary))) +
-  ggtitle("Percent of population paying more than 30% of income toward mortgage/related expenses") +
+  ggtitle("Mortgage affordability index by Percent of Population 18-24 Years Old") +
   xlab("Percent of Population 18-24 Years Old") + 
-  ylab("Percent of population paying more than 30% of income toward mortgage/related expenses")
+  ylab("Mortgage Affordability Index") +
+  scale_color_discrete(name = "Percentage of population nonwhite", labels = c("More than 50% nonwhite", "50% nonwhite or less"))
 
 RVBM %>%
   filter(year %in% c("2016", "2017")) %>%
   mutate(nw_binary = ifelse(nonwhite <= 50, 0, 1)) %>%
   ggplot() +
   geom_jitter(aes(x = percentya, y = ai_rent, group = RegionName, color = as.factor(nw_binary))) + 
-  ggtitle("Average Rent by Percent of Population 18-24 Years Old") + xlab("Percent of Population 18-24 Years Old") +
-  ylab("Percent of population paying more than 30% of income toward rent/related expenses")
+  ggtitle("Rent Affordability Index by Percent of Population 18-24 Years Old") + xlab("Percent of Population 18-24 Years Old") +
+  ylab("Rent Affordability Index") +
+  scale_color_discrete(name = "Percentage of population nonwhite", labels = c("More than 50% nonwhite", "50% nonwhite or less"))
 
 ```
 
@@ -779,4 +783,32 @@ Visualizations for H4: Increases over time in home and rental values will be ass
 ```
 
 #Discussion
+
+While Zillow's housing data proved useful for mapping at the state/county level, and showed similar distributions across communities to the BNIA data, there were a number of disadvantages to working with this data. There were many missing values that could interrupt trend lines and produced blank areas when mapping -- in particular this is visible in the map of HousingValue during 2010, where the lower-income, less-white portions of the city are largely missing. This suggests that the potential for bias in the Zillow data may increase the further back the data goes -- this makes sense, as one would expect their database to become more robust over time, as use of the site has increased and techniques for data mining have improved.
+
+Another major issue we encountered with the Zillow datasets is the lack of standardized geographic identifiers for merging with other data and mapping at meaningful community levels -- Zillow data had to be merged to both ACS and BNIA data by county or neighborhood name, and these text-based identifiers proved to be significantly more labor-intensive to preprocess. Zillow's neighborhood names also had significant alignment issues with the only publicly-available Baltimore neighborhood shapefile, leading to large blank areas when mapping was attempted.
+
+Neighborhood names in general proved to be problematic to work with -- in fact, we could not obtain demogrpahic data for areas smaller than the Community Statistical Areas, which we were able to map to neighborhoods using BNIA's provided geographic crosswalk, but encountered many problems in merging due to misspellings, neighborhoods with multiple names, neighborhoods that are sometimes counted as part of a larger surrounding neighborhood, and abbreviations.
+
+Finally, we found it difficult to locate comparable measures to Zillow's home value and median rental value indexes, making it difficult to assess the validity of these measures. We do have some evidence of their validity at least in terms of comparing different geographic areas, as the Zillow data displayed similar trends to the BNIA data when mapped onto Baltimore city by neighborhood/CSA. However, it would not be possible to make a general statement about the validity of these measures based 
+
+This exploration of exploring housing and demographic relationships effectively illustrates the difficulties, limitations, and extra processing burden of working with open access data. However, the Zillow data did allow us to compare market estimates to survey-based estimates, visualize seasonal changes in housing & rental markets, and provided a more direct estimate of rental markets than was available from any of our other data sources.
+
+
+#References
+
+Brummet, Q. and Reed D., (2019), The Effects of Gentrification on the Well-Being and Opportunity of Original Resident Adults and Children. FRB of Philadelphia Working Paper No. 19-30.
+
+Capps, K., (2019, July 16), The Hidden Winners in Neighborhood Gentrification. Retrieved from https://www.citylab.com/equity/2019/07/gentrification-effects-neighborhood-data-economic-statistics/594064/.
+
+Hoffower, H., (2019, July 29), Millennials aren't buying homes, and it might not be because they can't afford them: Some actually prefer to rent instead. Retrieved from https://www.businessinsider.com/millennials-renting-homes-instead-of-buying-2019-7.
+
+Hoynes, H.W. and McFadden, D. (1994), The Impact of Demographics on Housing and Non-Housing Wealth in the United States. NBER Working Paper No. 4666.
+
+Kasakove, S., (2019, September 25), AOC’s Plan to Decommodify Housing. Retrieved from https://www.thenation.com/article/aoc-sanders-housing-rent/.
+
+Meehan, S., (2019, March 20), Baltimore among nation’s most gentrified cities, study shows. Retrieved from https://www.baltimoresun.com/maryland/baltimore-city/bs-md-ci-gentrification-study-20190319-story.html.
+
+Squires, G. and Kubrin, C., (2005), Privileged Places: Race, Uneven Development, and the Geography of Opportunity in Urban America. Urban Studies, 42.
+
 
