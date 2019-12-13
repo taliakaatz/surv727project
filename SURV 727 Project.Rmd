@@ -17,6 +17,7 @@ library(bigrquery)
 library(sf)
 library(magrittr)
 library(censusapi)
+library(readxl)
 
 ```
 
@@ -34,136 +35,7 @@ nhood_rv <- read_csv("https://raw.githubusercontent.com/taliakaatz/surv727projec
 
 ```
 
-
-subset data to baltimore city (neighborhood level) and reshape to long format with full date, year, and month variables. also clean some superfluous variables and filter to only 2010-2018
-
-
-
-```{r, preprocess zillow data}
-
-RVBM  <-
-  nhood_rv %>% 
-    filter(City %in% "Baltimore" & State %in% "MD") %>%
-    gather(key = "date", value = "RentalValue", 8:117) %>%
-    select(-State, -Metro, -City, -CountyName) %>%
-    separate(date, into = c("year", "month"), sep = "-", remove = FALSE) %>%
-    filter(year %in% 2010:2018) %>%
-    arrange(RegionName, desc(date))
-
-HVBM <-
-  nhood_hv %>% 
-    filter(City %in% "Baltimore") %>%
-    gather(key = "date", value = "HomeValue", 8:290) %>%
-    select(-State, -Metro, -City, -CountyName) %>%
-    separate(date, into = c("year", "month"), sep = "-", remove = FALSE) %>%
-    filter(year %in% 2010:2018) %>%
-    arrange(RegionName, desc(date))
-
-#check whether neighborhood names line up between rental and home value files
-
-countynames <- unique(RVBM$RegionName)
-rent_hoods <- countynames[!(countynames %in% HVBM$RegionName)]
-
-countynames2 <- unique(HVBM$RegionName)
-home_hoods <- countynames2[!(countynames2 %in% RVBM$RegionName)]
-
-print(rent_hoods)
-print(home_hoods)
-#evidence of significant differences in the neighborhoods present in each file
-
-```
-
-
-begin exploring data visualizations -- work in progress
-
-```{r}
-
-#line plot of home values in baltimore city over the course of 2018, broken out by neighborhood
-HVbmore %>%
-  filter(year == "2018") %>%
-  ggplot() +
-  geom_line(aes(x = month, y = HomeValue, group = RegionName, color = HomeValue))
-
-
-
-```
-
-
-first attempts at neighborhood mapping visualizations -- work in progress
-
-
-```{r}
-
-
-#read in shapefile as a "simple feature"    
-bmore_sf <- st_read("/Users/taliakaatz/Desktop/Computation & Data Display/Project Folder/baltimore city shape files/Maryland_Baltimore_City_Neighborhoods.shp")
-
-#plot each aspect of shapefile
-plot(bmore_sf)
-
-##attempted to extract long/lat coordinates as X,Y values to append to zillow data and use in ggplot, was not successful
-#sf1 <- bmore_sf[1,]
-#sf1 <- st_cast(sf1, "POINT")
-#st_write(sf1, "/Users/taliakaatz/Desktop/Computation & Data Display/Project Folder/baltimore city shape files/geo baltimore city.csv", layer_options = "GEOMETRY=AS_XY")
-  
-#bmore_map <- read.csv("/Users/taliakaatz/Desktop/Computation & Data Display/Project Folder/baltimore city shape files/geo baltimore city.csv")
-
-#clean neighborhood names 
-
-RVbmore %<>% 
-  mutate(NHOOD = trimws(toupper(RegionName)))
-
-bmore_sf %<>%
-  mutate(NHOOD = trimws(toupper(LABEL)))
-
-#check the shapefile names against the zillow names
-
-hoodnames <- unique(RVbmore$NHOOD)
-hoodnames[!(hoodnames %in% bmore_sf$NHOOD)]
-
-othhoodnames <- unique(bmore_sf$NHOOD)
-othhoodnames[!(othhoodnames %in% RVbmore$NHOOD)]
-
-#adjust non-matches (zillow neighborhood names not matched to any in shaefile) as necessary and check results
-### will basically have to re-do this with the BNIA shapefile :( lol
-
-RVbmore %<>%
-  mutate(NHOOD = gsub("COPPIN HEIGHTS - ASH-CO-EAST", "COPPIN HEIGHTS/ASH-CO-EAST", NHOOD)) %>%
-  mutate(NHOOD = gsub("ELLWOOD PARK-MONUMENT", "ELLWOOD PARK/MONUMENT", NHOOD)) %>%
-  mutate(NHOOD = gsub("GLENHAM-BELFORD", "GLENHAM-BELHAR", NHOOD)) %>%
-  mutate(NHOOD = gsub("MONDAWIN", "MONDAWMIN", NHOOD)) %>%
-  mutate(NHOOD = gsub("NEW SOUTHWEST - MOUNT CLARE", "NEW SOUTHWEST/MOUNT CLARE", NHOOD)) %>%
-  mutate(NHOOD = gsub("PENROSE-FAYETTE STREET OUTREACH", "PENROSE/FAYETTE STREET OUTREACH", NHOOD)) %>%
-  mutate(NHOOD = gsub("SBIC", "SOUTH BALTIMORE", NHOOD)) %>%
-  mutate(NHOOD = gsub("WASHINGTON VILLAGE", "WASHINGTON VILLAGE/PIGTOWN", NHOOD)) %>%
-  mutate(NHOOD = gsub("WOODRING", "WESTFIELD", NHOOD))
-
-hoodnames <- unique(RVbmore$NHOOD)
-hoodnames[!(hoodnames %in% bmore_sf$NHOOD)]
-##based on output, still need to resolve "HARFORD-ECHODALE - PERRING PARKWAY" -- need to determine which neighborhood that area falls under in shapefile
-
-##examples of how to plot a single attribute of shapefile using 'plot' and 'ggplot', other output specifications (fill, etc.) can be added -- neither of these display useful info yet, they just color-code each neighborhood individually by the neighborhood name
-
-#using plot
-plot(bmore_sf['LABEL'])
-
-#using ggplot
-bmore_sf %>%
-  ggplot() +
-    geom_sf(aes(fill = LABEL), show.legend = FALSE)
-  
-
-##attempt to joing zillow data and plot rental values
-bmore_sf %>%
-  left_join(RVbmore, by = "NHOOD") %>%
-  filter(date == "2018-01") %>%
-  ggplot() +
-    geom_sf(aes(fill = RentalValue))
-
-
-```
-
-##Adding Demographics
+##Adding Demographics -- Counties
 
 ```{r}
 
@@ -385,14 +257,351 @@ combinedMD <-
 
 ```
 
+
+#Merging BNIA data to neighborhood data
+
+subset data to baltimore city (neighborhood level) and reshape to long format with full date, year, and month variables. also clean some superfluous variables and filter to only 2010-2018
+
+```{r, preprocess zillow data}
+
+RVBM  <-
+  nhood_rv %>% 
+    filter(City %in% "Baltimore" & State %in% "MD") %>%
+    gather(key = "date", value = "RentalValue", 8:117) %>%
+    select(-State, -Metro, -City, -CountyName) %>%
+    separate(date, into = c("year", "month"), sep = "-", remove = FALSE) %>%
+    filter(year %in% 2010:2018) %>%
+    arrange(RegionName, desc(date))
+
+HVBM <-
+  nhood_hv %>% 
+    filter(City %in% "Baltimore") %>%
+    gather(key = "date", value = "HomeValue", 8:290) %>%
+    select(-State, -Metro, -City, -CountyName) %>%
+    separate(date, into = c("year", "month"), sep = "-", remove = FALSE) %>%
+    filter(year %in% 2010:2018) %>%
+    arrange(RegionName, desc(date))
+
+#check whether neighborhood names line up between rental and home value files
+
+countynames <- unique(RVBM$RegionName)
+rent_hoods <- countynames[!(countynames %in% HVBM$RegionName)]
+
+countynames2 <- unique(HVBM$RegionName)
+home_hoods <- countynames2[!(countynames2 %in% RVBM$RegionName)]
+
+print(rent_hoods)
+print(home_hoods)
+#evidence of significant differences in the neighborhoods present in each file
+
+```
+
+read in geographic crosswalk and demographic files
+
+```{r}
+
+
+bnia_crosswalk <- read.csv("/Users/taliakaatz/Desktop/Computation & Data Display/Project Folder/CSA_to_NSA_2010.csv")
+
+bnia <- "/Users/taliakaatz/Desktop/Computation & Data Display/Project Folder/VS17_Indicators_2010_2017.xlsx"
+
+bnia2010 <- read_xlsx(bnia, sheet = "2010")
+bnia2011 <- read_xlsx(bnia, sheet = "2011")
+bnia2012 <- read_xlsx(bnia, sheet = "2012")
+bnia2013 <- read_xlsx(bnia, sheet = "2013")
+bnia2014 <- read_xlsx(bnia, sheet = "2014")
+bnia2015 <- read_xlsx(bnia, sheet = "2015")
+bnia2016 <- read_xlsx(bnia, sheet = "2016")
+bnia2017 <- read_xlsx(bnia, sheet = "2017")
+
+```
+
+Standardize crosswalk and zillow files and merge by neighborhood
+
+```{r}
+
+#create uniform neighborhood name variables in each dataset
+  
+bnia_crosswalk %<>% 
+  mutate(NHOOD = trimws(toupper(NSA2010))) %>%
+  select(-NSA2010)
+  
+HVBM %<>%
+  mutate(NHOOD = trimws(toupper(RegionName)))
+
+RVBM %<>%
+  mutate(NHOOD = trimws(toupper(RegionName))) 
+
+#merge crosswalk to home and rental value data and identify unmatched neighborhood names
+HVBM %>%
+  left_join(bnia_crosswalk, by = "NHOOD") %>%
+  filter(is.na(CSA2010)) %>%
+  distinct(NHOOD)
+
+RVBM %>%
+  left_join(bnia_crosswalk, by = "NHOOD") %>%
+  filter(is.na(CSA2010)) %>%
+  distinct(NHOOD)
+
+#fix unmatched neighborhood names (update in Zillow file to match crosswalk): 
+
+HVBM %<>%
+  mutate(NHOOD = gsub("CHINQUAPIN PARK-BELVEDERE", "CHINQUAPIN PARK", NHOOD)) %>%
+  mutate(NHOOD = gsub("HARFORD-ECHODALE - PERRING PARKWAY", "HARFORD-ECHODALE/PERRING PARKWAY", NHOOD)) %>%
+  mutate(NHOOD = gsub("JOSEPH LEE", "BAYVIEW", NHOOD)) %>%
+  mutate(NHOOD = gsub("MOUNT WASHINGTON", "MT. WASHINGTON", NHOOD)) %>%
+  mutate(NHOOD = gsub("NORTH ROLAND PARK - POPLAR HILL", "NORTH ROLAND PARK/POPLAR HILL", NHOOD)) %>%
+  mutate(NHOOD = gsub("SBIC", "SOUTH BALTIMORE", NHOOD)) %>%
+  mutate(NHOOD = gsub("WOODRING", "WESTFIELD", NHOOD))
+
+
+RVBM %<>%
+  mutate(NHOOD = gsub("COPPIN HEIGHTS - ASH-CO-EAST", "COPPIN HEIGHTS/ASH-CO-EAST", NHOOD)) %>%
+  mutate(NHOOD = gsub("ELLWOOD PARK-MONUMENT", "ELLWOOD PARK/MONUMENT", NHOOD)) %>%
+  mutate(NHOOD = gsub("HARFORD-ECHODALE - PERRING PARKWAY", "HARFORD-ECHODALE/PERRING PARKWAY", NHOOD)) %>%
+  mutate(NHOOD = gsub("MONDAWIN", "MONDAWMIN", NHOOD)) %>%
+  mutate(NHOOD = gsub("MOUNT WASHINGTON", "MT. WASHINGTON", NHOOD)) %>%
+  mutate(NHOOD = gsub("NEW SOUTHWEST - MOUNT CLARE", "NEW SOUTHWEST/MT. CLARE", NHOOD)) %>%
+  mutate(NHOOD = gsub("PENROSE-FAYETTE STREET OUTREACH", "PENROSE/FAYETTE STREET OUTREACH", NHOOD)) %>%
+  mutate(NHOOD = gsub("SBIC", "SOUTH BALTIMORE", NHOOD)) %>%
+  mutate(NHOOD = gsub("WASHINGTON VILLAGE", "WASHINGTON VILLAGE/PIGTOWN", NHOOD)) %>%
+  mutate(NHOOD = gsub("WOODRING", "WESTFIELD", NHOOD))
+
+#merge and check again with updated neighborhoods -- looks good! 
+
+HVBM %>%
+  left_join(bnia_crosswalk, by = "NHOOD") %>%
+  filter(is.na(CSA2010)) %>%
+  distinct(NHOOD)
+
+RVBM %>%
+  left_join(bnia_crosswalk, by = "NHOOD") %>%
+  filter(is.na(CSA2010)) %>%
+  distinct(NHOOD)
+
+#merge CSA names from crosswalk to datasets
+
+HVBM %<>% left_join(bnia_crosswalk, by = "NHOOD")
+
+RVBM %<>% left_join(bnia_crosswalk, by = "NHOOD")
+
+#adjust some CSA names to match formatting to BNIA demographic files
+
+RVBM %<>%
+  mutate(CSA2010 = gsub("Allendale/Irvington/South Hilton", "Allendale/Irvington/S. Hilton", CSA2010)) %>%
+  mutate(CSA2010 = gsub("Glen-Falstaff", "Glen-Fallstaff", CSA2010)) %>%
+  mutate(CSA2010 = gsub("Westport/Mt. Winans/Lakeland", "Westport/Mount Winans/Lakeland", CSA2010)) %>%
+  mutate(CSA2010 = gsub("Mt. Washington/Coldspring", "Mount Washington/Coldspring", CSA2010))
+
+HVBM %<>%
+  mutate(CSA2010 = gsub("Allendale/Irvington/South Hilton", "Allendale/Irvington/S. Hilton", CSA2010)) %>%
+  mutate(CSA2010 = gsub("Glen-Falstaff", "Glen-Fallstaff", CSA2010)) %>%
+  mutate(CSA2010 = gsub("Westport/Mt. Winans/Lakeland", "Westport/Mount Winans/Lakeland", CSA2010)) %>%
+  mutate(CSA2010 = gsub("Mt. Washington/Coldspring", "Mount Washington/Coldspring", CSA2010))
+
+```
+
+Prepare BNIA demographic files for merge
+
+```{r}
+
+#in file for each year, subset to variables of interest and rename
+
+#2010
+bnia_vars <- colnames(bnia2010[, c("CSA2010", "Percent of Residents - White/Caucasian (Non-Hispanic)", "Percent of Residents - Hispanic", "Percent of Population 18-24 Years old", "Median Price of Homes Sold", "Affordability Index - Mortgage", "Affordability Index - Rent")])
+new_varnames <- c("CSA2010", "nonwhite10", "hispanic10", "percentya10", "mediansold10", "ai_mortgage10", "ai_rent10")
+
+bnia2010 %<>%
+  select(bnia_vars) %>%
+  set_colnames(new_varnames) %>%
+  mutate(nonwhite10 = (100 - nonwhite10))
+
+#2011
+bnia_vars <- c("CSA2010", "Median Price of Homes Sold", "Affordability Index - Mortgage", "Affordability Index - Rent")
+new_varnames <- c("CSA2010", "mediansold11", "ai_mortgage11", "ai_rent11")
+
+bnia2011 %<>%
+  select(bnia_vars) %>%
+  set_colnames(new_varnames)
+
+#2012
+bnia_vars <- c("CSA2010", "Median Price of Homes Sold", "Affordability Index - Mortgage", "Affordability Index - Rent")
+new_varnames <- c("CSA2010", "mediansold12", "ai_mortgage12", "ai_rent12")
+
+bnia2012 %<>%
+  select(bnia_vars) %>%
+  set_colnames(new_varnames)
+
+#2013
+bnia_vars <- c("CSA2010", "Median Price of Homes Sold", "Affordability Index - Mortgage", "Affordability Index - Rent")
+new_varnames <- c("CSA2010", "mediansold13", "ai_mortgage13", "ai_rent13")
+
+bnia2013 %<>%
+  select(bnia_vars) %>%
+  set_colnames(new_varnames)
+
+#2014
+bnia_vars <- c("CSA2010", "Median Price of Homes Sold", "Affordability Index - Mortgage", "Affordability Index - Rent")
+new_varnames <- c("CSA2010", "mediansold14", "ai_mortgage14", "ai_rent14")
+
+bnia2014 %<>%
+  select(bnia_vars) %>%
+  set_colnames(new_varnames)
+
+#2015
+bnia_vars <- c("CSA2010", "Median Price of Homes Sold", "Affordability Index - Mortgage", "Affordability Index - Rent")
+new_varnames <- c("CSA2010", "mediansold15", "ai_mortgage15", "ai_rent15")
+
+bnia2015 %<>%
+  select(bnia_vars) %>%
+  set_colnames(new_varnames)
+
+#2016
+bnia_vars <- colnames(bnia2016[, c("CSA2010", "Percent of Residents - White/Caucasian (Non-Hispanic)", "Percent of Residents - Hispanic", "Percent of Population 18-24 years old", "Median Price of Homes Sold", "Affordability Index - Mortgage", "Affordability Index - Rent")])
+new_varnames <- c("CSA2010", "nonwhite16", "hispanic16", "percentya16", "mediansold16", "ai_mortgage16", "ai_rent16")
+
+bnia2016 %<>%
+  select(bnia_vars) %>%
+  set_colnames(new_varnames) %>%
+  mutate(nonwhite16 = (100 - nonwhite16))
+
+#2017
+bnia_vars <- colnames(bnia2017[, c("CSA2010", "Percent of Residents - White/Caucasian (Non-Hispanic)", "Percent of Residents - Hispanic", "Percent of Population 18-24 years old", "Median Price of Homes Sold", "Affordability Index - Mortgage", "Affordability Index - Rent")])
+new_varnames <- c("CSA2010", "nonwhite17", "hispanic17", "percentya17", "mediansold17", "ai_mortgage17", "ai_rent17")
+
+bnia2017 %<>%
+  select(bnia_vars) %>%
+  set_colnames(new_varnames) %>%
+  mutate(nonwhite17 = (100 - nonwhite17))
+
+```
+
+#merge all to zillow dataset by CSA
+
+```{r}
+
+RVBM %<>%
+  left_join(bnia2010, by = "CSA2010") %>%
+  left_join(bnia2011, by = "CSA2010") %>%
+  left_join(bnia2012, by = "CSA2010") %>%
+  left_join(bnia2013, by = "CSA2010") %>%
+  left_join(bnia2014, by = "CSA2010") %>%
+  left_join(bnia2015, by = "CSA2010") %>%
+  left_join(bnia2016, by = "CSA2010") %>%
+  left_join(bnia2017, by = "CSA2010")
+
+HVBM %<>%
+  left_join(bnia2010, by = "CSA2010") %>%
+  left_join(bnia2011, by = "CSA2010") %>%
+  left_join(bnia2012, by = "CSA2010") %>%
+  left_join(bnia2013, by = "CSA2010") %>%
+  left_join(bnia2014, by = "CSA2010") %>%
+  left_join(bnia2015, by = "CSA2010") %>%
+  left_join(bnia2016, by = "CSA2010") %>%
+  left_join(bnia2017, by = "CSA2010")
+
+```
+
+create long format columns containing demographic variables by year
+
+```{r}
+
+
+RVBM$nonwhite <- ifelse(RVBM$year == 2010, RVBM$nonwhite10,
+                        ifelse(RVBM$year == 2016, RVBM$nonwhite16,
+                               ifelse(RVBM$year == 2017, RVBM$nonwhite17, "NA")))
+
+RVBM$hispanic <- ifelse(RVBM$year == 2010, RVBM$hispanic10,
+                        ifelse(RVBM$year == 2016, RVBM$hispanic16,
+                               ifelse(RVBM$year == 2017, RVBM$hispanic17, "NA")))
+
+RVBM$percentya <- ifelse(RVBM$year == 2010, RVBM$percentya10,
+                        ifelse(RVBM$year == 2016, RVBM$percentya16,
+                               ifelse(RVBM$year == 2017, RVBM$percentya17, "NA")))
+
+RVBM$mediansold <- ifelse(RVBM$year == 2010, RVBM$mediansold10,
+                          ifelse(RVBM$year == 2011, RVBM$mediansold11,
+                            ifelse(RVBM$year == 2012, RVBM$mediansold12,
+                              ifelse(RVBM$year == 2013, RVBM$mediansold13,
+                                ifelse(RVBM$year == 2014, RVBM$mediansold14,
+                                  ifelse(RVBM$year == 2015, RVBM$mediansold15,
+                                   ifelse(RVBM$year == 2016, RVBM$mediansold16,
+                                      ifelse(RVBM$year == 2017, RVBM$mediansold17, "NA"))))))))
+
+RVBM$ai_mortgage <- ifelse(RVBM$year == 2010, RVBM$ai_mortgage10,
+                          ifelse(RVBM$year == 2011, RVBM$ai_mortgage11,
+                            ifelse(RVBM$year == 2012, RVBM$ai_mortgage12,
+                              ifelse(RVBM$year == 2013, RVBM$ai_mortgage13,
+                                ifelse(RVBM$year == 2014, RVBM$ai_mortgage14,
+                                  ifelse(RVBM$year == 2015, RVBM$ai_mortgage15,
+                                   ifelse(RVBM$year == 2016, RVBM$ai_mortgage16,
+                                      ifelse(RVBM$year == 2017, RVBM$ai_mortgage17, "NA"))))))))
+
+RVBM$ai_rent <- ifelse(RVBM$year == 2010, RVBM$ai_rent10,
+                          ifelse(RVBM$year == 2011, RVBM$ai_rent11,
+                            ifelse(RVBM$year == 2012, RVBM$ai_rent12,
+                              ifelse(RVBM$year == 2013, RVBM$ai_rent13,
+                                ifelse(RVBM$year == 2014, RVBM$ai_rent14,
+                                  ifelse(RVBM$year == 2015, RVBM$ai_rent15,
+                                   ifelse(RVBM$year == 2016, RVBM$ai_rent16,
+                                      ifelse(RVBM$year == 2017, RVBM$ai_rent17, "NA"))))))))
+
+#HVBM
+HVBM$nonwhite <- ifelse(HVBM$year == 2010, HVBM$nonwhite10,
+                        ifelse(HVBM$year == 2016, HVBM$nonwhite16,
+                               ifelse(HVBM$year == 2017, HVBM$nonwhite17, "NA")))
+
+HVBM$hispanic <- ifelse(HVBM$year == 2010, HVBM$hispanic10,
+                        ifelse(HVBM$year == 2016, HVBM$hispanic16,
+                               ifelse(HVBM$year == 2017, HVBM$hispanic17, "NA")))
+
+HVBM$percentya <- ifelse(HVBM$year == 2010, HVBM$percentya10,
+                        ifelse(HVBM$year == 2016, HVBM$percentya16,
+                               ifelse(HVBM$year == 2017, HVBM$percentya17, "NA")))
+
+HVBM$mediansold <- ifelse(HVBM$year == 2010, HVBM$mediansold10,
+                          ifelse(HVBM$year == 2011, HVBM$mediansold11,
+                            ifelse(HVBM$year == 2012, HVBM$mediansold12,
+                              ifelse(HVBM$year == 2013, HVBM$mediansold13,
+                                ifelse(HVBM$year == 2014, HVBM$mediansold14,
+                                  ifelse(HVBM$year == 2015, HVBM$mediansold15,
+                                   ifelse(HVBM$year == 2016, HVBM$mediansold16,
+                                      ifelse(HVBM$year == 2017, HVBM$mediansold17, "NA"))))))))
+
+HVBM$ai_mortgage <- ifelse(HVBM$year == 2010, HVBM$ai_mortgage10,
+                          ifelse(HVBM$year == 2011, HVBM$ai_mortgage11,
+                            ifelse(HVBM$year == 2012, HVBM$ai_mortgage12,
+                              ifelse(HVBM$year == 2013, HVBM$ai_mortgage13,
+                                ifelse(HVBM$year == 2014, HVBM$ai_mortgage14,
+                                  ifelse(HVBM$year == 2015, HVBM$ai_mortgage15,
+                                   ifelse(HVBM$year == 2016, HVBM$ai_mortgage16,
+                                      ifelse(HVBM$year == 2017, HVBM$ai_mortgage17, "NA"))))))))
+
+HVBM$ai_rent <- ifelse(HVBM$year == 2010, HVBM$ai_rent10,
+                          ifelse(HVBM$year == 2011, HVBM$ai_rent11,
+                            ifelse(HVBM$year == 2012, HVBM$ai_rent12,
+                              ifelse(HVBM$year == 2013, HVBM$ai_rent13,
+                                ifelse(HVBM$year == 2014, HVBM$ai_rent14,
+                                  ifelse(HVBM$year == 2015, HVBM$ai_rent15,
+                                   ifelse(HVBM$year == 2016, HVBM$ai_rent16,
+                                      ifelse(HVBM$year == 2017, HVBM$ai_rent17, "NA"))))))))
+
+RVBM %<>% 
+  mutate_at(c("nonwhite", "hispanic", "percentya", "mediansold", "ai_mortgage", "ai_rent"), as.numeric)
+
+HVBM %<>% 
+  mutate_at(c("nonwhite", "hispanic", "percentya", "mediansold", "ai_mortgage", "ai_rent"), as.numeric)
+
+```
+
+
 ##visualizations for hypothesis #1: County-level rental values will show a greater increase over time than housing values over the same period
 
 ```{r}
 
 year_breaks <- c("2010-01", "2011-01", "2012-01", "2013-01", "2014-01", "2015-01", "2016-01", "2017-01", "2018-01")
 
-HVMD %>%
-  left_join(RVMD, by = c("RegionName", "date")) %>%
+combinedMD %>%
   mutate(hrv_ratio = (RentalValue/(HomeValue/1000))) %>%
   filter(Metro.x %in% "Baltimore-Columbia-Towson") %>%
   ggplot() +
@@ -401,8 +610,7 @@ HVMD %>%
   scale_x_discrete("Date", c('2010', year_breaks, year_breaks)) + 
   ylab("Ratio of rental values to home values")
 
-HVMD %>%
-  left_join(RVMD, by = c("RegionName", "date")) %>%
+combinedMD %>%
   filter(Metro.x %in% "Baltimore-Columbia-Towson") %>%
   ggplot() +
   geom_jitter(aes(x = date, y = RentalValue , group = RegionName, color = RegionName)) + 
@@ -410,15 +618,13 @@ HVMD %>%
   scale_x_discrete("Date", c('2010', year_breaks, year_breaks)) + 
   ylab("Average rental Values (monthly rent in $)")
 
-HVMD %>%
-  left_join(RVMD, by = c("RegionName", "date")) %>%
+combinedMD %>%
   filter(Metro.x %in% "Baltimore-Columbia-Towson") %>%
   ggplot() +
   geom_jitter(aes(x = date, y = (HomeValue/1000) , group = RegionName, color = RegionName)) + 
   ggtitle("Home Values Ratio Over Time in Baltimore Metro") + 
   scale_x_discrete("Date", c('2010', year_breaks, year_breaks)) + 
   ylab("Average home value (in thousands)")
-
 
 ```
 
@@ -446,71 +652,104 @@ HVMD %>%
 
 ```
 
-
-Merging BNIA data to neighborhood data
-
 ```{r}
-
-#read in shapefile and geographic crosswalk
 
 bnia_sf <- st_read("/Users/taliakaatz/Desktop/Computation & Data Display/Project Folder/csa_2010_boundaries/CSA_NSA_Tracts.shp")
 
-bnia_crosswalk <- read.csv("/Users/taliakaatz/Desktop/Computation & Data Display/Project Folder/CSA_to_NSA_2010.csv")
+```
 
-bnia_crosswalk %<>% 
-  mutate(NHOOD = trimws(toupper(NSA2010))) %>%
-  select(-NSA2010)
+begin exploring data visualizations -- work in progress
 
-#create uniform neighborhood name variable
-HVBM %<>%
-  mutate(NHOOD = trimws(toupper(RegionName)))
+```{r}
 
-RVBM %<>%
-  mutate(NHOOD = trimws(toupper(RegionName))) 
-
-#merge crosswalk to home and rental value data and identify unmatched neighborhood names
+#line plot of home values in baltimore city over the course of 2017, broken out by neighborhood
 HVBM %>%
-  left_join(bnia_crosswalk, by = "NHOOD") %>%
-  filter(is.na(CSA2010)) %>%
-  distinct(NHOOD)
+  filter(year == "2017") %>%
+  ggplot() +
+  geom_line(aes(x = month, y = HomeValue, group = RegionName, color = percentya))
+
+
+
+```
+
+
+```{r}
+bnia_sf %>%
+  mutate(CSA2010 = Community) %>%
+  left_join(RVBM, by = "CSA2010") %>%
+  filter(date == "2017-01") %>%
+  ggplot() +
+    geom_sf(aes(fill = RentalValue))
+
+bnia_sf %>%
+  mutate(CSA2010 = Community) %>%
+  left_join(HVBM, by = "CSA2010") %>%
+  filter(date == "2017-01") %>%
+  ggplot() +
+    geom_sf(aes(fill = HomeValue))
+
+bnia_sf %>%
+  mutate(CSA2010 = Community) %>%
+  left_join(RVBM, by = "CSA2010") %>%
+  filter(date == "2017-01") %>%
+  ggplot() +
+    geom_sf(aes(fill = mediansold))
+
+bnia_sf %>%
+  mutate(CSA2010 = Community) %>%
+  left_join(RVBM, by = "CSA2010") %>%
+  filter(date == "2017-01") %>%
+  ggplot() +
+    geom_sf(aes(fill = percentya))
+
+
+```
+
+Visualize relationships between age and race make-up of community and average home and rent values in community. Charts created with both Zillow data and BNIA data for comparison purposes. Data for 2016-17
+
+```{r}
+
+HVBM %>%
+  filter(year %in% c("2016", "2017")) %>%
+  mutate(nw_binary = ifelse(nonwhite <= 50, 0, 1)) %>%
+  ggplot() +
+  geom_jitter(aes(x = percentya, y = HomeValue/1000 , group = RegionName, color = as.factor(nw_binary))) + ggtitle("Home Value by Percent of Population 18-24 Years Old") + xlab("Percent of Population 18-24 Years Old") + ylab("Average home value (in thousands)")
+
 
 RVBM %>%
-  left_join(bnia_crosswalk, by = "NHOOD") %>%
-  filter(is.na(CSA2010)) %>%
-  distinct(NHOOD)
+  filter(year %in% c("2016", "2017")) %>%
+  mutate(nw_binary = ifelse(nonwhite <= 50, 0, 1)) %>%
+  ggplot() +
+  geom_jitter(aes(x = percentya, y = RentalValue , group = RegionName, color = as.factor(nw_binary))) +
+  ggtitle("Home Value by Percent of Population 18-24 Years Old") + 
+  xlab("Percent of Population 18-24 Years Old") + 
+  ylab("Average monthly rent")
 
-#fix unmatched neighborhood names (update in Zillow file to match crosswalk): 
-#CHINQUAPIN PARK-BELVEDERE
-#HARFORD-ECHODALE - PERRING PARKWAY				
-#JOSEPH LEE	(not in BNIA file but Google indicates it as part of Bayview)			
-#MOUNT WASHINGTON				
-#NORTH ROLAND PARK - POPLAR HILL				
-#SBIC	(not in BNIA file but Google indicates South Batimore is sometimes called SBIC)			
-#WOODRING
+RVBM %>%
+  filter(year %in% c("2016", "2017")) %>%
+  mutate(nw_binary = ifelse(nonwhite <= 50, 0, 1)) %>%
+  ggplot() +
+  geom_jitter(aes(x = percentya, y = ai_mortgage , group = RegionName, color = as.factor(nw_binary))) +
+  ggtitle("Percent of population paying more than 30% of income toward mortgage/related expenses") +
+  xlab("Percent of Population 18-24 Years Old") + 
+  ylab("Percent of population paying more than 30% of income toward mortgage/related expenses")
 
-HVBM %<>%
-  mutate(NHOOD = gsub("CHINQUAPIN PARK-BELVEDERE", "CHINQUAPIN PARK", NHOOD)) %>%
-  mutate(NHOOD = gsub("HARFORD-ECHODALE - PERRING PARKWAY", "HARFORD-ECHODALE/PERRING PARKWAY", NHOOD)) %>%
-  mutate(NHOOD = gsub("JOSEPH LEE", "BAYVIEW", NHOOD)) %>%
-  mutate(NHOOD = gsub("MOUNT WASHINGTON", "MT. WASHINGTON", NHOOD)) %>%
-  mutate(NHOOD = gsub("NORTH ROLAND PARK - POPLAR HILL", "NORTH ROLAND PARK/POPLAR HILL", NHOOD)) %>%
-  mutate(NHOOD = gsub("SBIC", "SOUTH BALTIMORE", NHOOD)) %>%
-  mutate(NHOOD = gsub("WOODRING", "WESTFIELD", NHOOD))
+RVBM %>%
+  filter(year %in% c("2016", "2017")) %>%
+  mutate(nw_binary = ifelse(nonwhite <= 50, 0, 1)) %>%
+  ggplot() +
+  geom_jitter(aes(x = percentya, y = ai_rent, group = RegionName, color = as.factor(nw_binary))) + 
+  ggtitle("Average Rent by Percent of Population 18-24 Years Old") + xlab("Percent of Population 18-24 Years Old") +
+  ylab("Percent of population paying more than 30% of income toward rent/related expenses")
 
-
-RVBM %<>%
-  mutate(NHOOD = gsub("COPPIN HEIGHTS - ASH-CO-EAST", "COPPIN HEIGHTS/ASH-CO-EAST", NHOOD)) %>%
-  mutate(NHOOD = gsub("ELLWOOD PARK-MONUMENT", "ELLWOOD PARK/MONUMENT", NHOOD)) %>%
-  mutate(NHOOD = gsub("HARFORD-ECHODALE - PERRING PARKWAY", "HARFORD-ECHODALE/PERRING PARKWAY", NHOOD)) %>%
-  mutate(NHOOD = gsub("MONDAWIN", "MONDAWMIN", NHOOD)) %>%
-  mutate(NHOOD = gsub("MOUNT WASHINGTON", "MT. WASHINGTON", NHOOD)) %>%
-  mutate(NHOOD = gsub("NEW SOUTHWEST - MOUNT CLARE", "NEW SOUTHWEST/MT. CLARE", NHOOD)) %>%
-  mutate(NHOOD = gsub("PENROSE-FAYETTE STREET OUTREACH", "PENROSE/FAYETTE STREET OUTREACH", NHOOD)) %>%
-  mutate(NHOOD = gsub("SBIC", "SOUTH BALTIMORE", NHOOD)) %>%
-  mutate(NHOOD = gsub("WASHINGTON VILLAGE", "WASHINGTON VILLAGE/PIGTOWN", NHOOD)) %>%
-  mutate(NHOOD = gsub("WOODRING", "WESTFIELD", NHOOD))
-
-#merge and check again with updated neighborhoods:
+RVBM %>%
+  filter(year %in% c("2016", "2017")) %>%
+  mutate(nw_binary = ifelse(nonwhite <= 50, 0, 1)) %>%
+  ggplot() +
+  geom_jitter(aes(x = percentya, y = mediansold, group = RegionName, color = as.factor(nw_binary))) + 
+  ggtitle("Average Rent by Percent of Population 18-24 Years Old") + 
+  xlab("Percent of Population 18-24 Years Old") + 
+  ylab("Median price of homes sold")
 
 
 ```
