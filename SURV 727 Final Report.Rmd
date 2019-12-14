@@ -172,24 +172,26 @@ HVMD <-
 
 ```{r, prepare ACS county data, results='hide'}
 
+cnames <- c("Allegany County","Anne Arundel County", "Baltimore County", "Calvert County", "Carroll County", "Cecil County", "Charles County", "Frederick County", "Harford County", "Howard County", "Montgomery County", "Prince George's County", "Saint Mary's County", "Washington County", "Wicomico County", "Baltimore City")
 
-count_md10$CountyName <- c("Allegany County","Anne Arundel County", "Baltimore County", "Calvert County", "Carroll County", "Cecil County", "Charles County", "Frederick County", "Harford County", "Howard County", "Montgomery County", "Prince George's County", "Saint Mary's County", "Washington County", "Wicomico County", "Baltimore City")
+count_md10$CountyName <- cnames
 
-count_md11$CountyName <- c("Allegany County","Anne Arundel County", "Baltimore County", "Calvert County", "Carroll County", "Cecil County", "Charles County", "Frederick County", "Harford County", "Howard County", "Montgomery County", "Prince George's County", "Saint Mary's County", "Washington County", "Wicomico County", "Baltimore City")
+count_md11$CountyName <- cnames
 
-count_md12$CountyName <- c("Allegany County","Anne Arundel County", "Baltimore County", "Calvert County", "Carroll County", "Cecil County", "Charles County", "Frederick County", "Harford County", "Howard County", "Montgomery County", "Prince George's County", "Saint Mary's County", "Washington County", "Wicomico County", "Baltimore City")
+count_md12$CountyName <- cnames
 
-count_md13$CountyName <- c("Allegany County","Anne Arundel County", "Baltimore County", "Calvert County", "Carroll County", "Cecil County", "Charles County", "Frederick County", "Harford County", "Howard County", "Montgomery County", "Prince George's County", "Saint Mary's County", "Washington County", "Wicomico County", "Baltimore City")
+count_md13$CountyName <- cnames
 
-count_md14$CountyName <- c("Allegany County","Anne Arundel County", "Baltimore County", "Calvert County", "Carroll County", "Cecil County", "Charles County", "Frederick County", "Harford County", "Howard County", "Montgomery County", "Prince George's County", "Saint Mary's County", "Washington County", "Wicomico County", "Baltimore City")
+count_md14$CountyName <- cnames
 
-count_md15$CountyName <- c("Allegany County","Anne Arundel County", "Baltimore County", "Calvert County", "Carroll County", "Cecil County", "Charles County", "Frederick County", "Harford County", "Howard County", "Montgomery County", "Prince George's County", "Saint Mary's County", "Washington County", "Wicomico County", "Baltimore City")
+count_md15$CountyName <- cnames
 
-count_md16$CountyName <- c("Allegany County","Anne Arundel County", "Baltimore County", "Calvert County", "Carroll County", "Cecil County", "Charles County", "Frederick County", "Harford County", "Howard County", "Montgomery County", "Prince George's County", "Saint Mary's County", "Washington County", "Wicomico County", "Baltimore City")
+count_md16$CountyName <- cnames
 
-count_md17$CountyName <- c("Allegany County","Anne Arundel County", "Baltimore County", "Calvert County", "Carroll County", "Cecil County", "Charles County", "Frederick County", "Harford County", "Howard County", "Montgomery County", "Prince George's County", "Saint Mary's County", "Washington County", "Wicomico County", "Baltimore City")
+count_md17$CountyName <- cnames
 
-count_md18$CountyName <- c("Allegany County","Anne Arundel County", "Baltimore County", "Calvert County", "Carroll County", "Cecil County", "Charles County", "Frederick County", "Harford County", "Howard County", "Montgomery County", "Prince George's County", "Saint Mary's County", "Washington County", "Wicomico County", "Baltimore City")
+count_md18$CountyName <- cnames
+
 
 ```
 
