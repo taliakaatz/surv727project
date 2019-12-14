@@ -2,7 +2,9 @@
 title: "SURV 727 Final Report"
 author: "Talia Kaatz and Chris Brehm"
 date: "12/13/2019"
-output: html_document
+output:
+  pdf_document: default
+  html_document: default
 ---
 #Introduction
 
@@ -10,7 +12,7 @@ Housing affordability and changes in the housing market garner significant atten
 
 Of the many American metropolitan areas affected by the housing crisis, the city of Baltimore, MD provides distinct characteristics that uniquely qualify it to study as a case study. Baltimore City, unlike in many major metro areas, is not part of any surrounding counties but is classed as an “independent city.” Tax bases are therefore separate at both city and county level, providing unique comparison of urban/suburban areas, as well as providing a basis for comparison between the city and other Maryland counties. Moreover, Baltimore’s history of redlining and segregation within the city has produced stark demographic and economic differences at the neighborhood level, and a recent study ranked Baltimore among most heavily-gentrified cities in U.S. (Meehan 2019).
 
-In order to better understand the housing crisis and the factors associated with it, we have drawn data from a variety of sources including Zillow, the American Community Survey, and the Baltimore Neighborhood Indicator Alliance. Using this data, we will investigate the following hypotheses:
+In order to explore ways of understanding the housing crisis and the factors associated with it, we have drawn data from a variety of sources including Zillow, the American Community Survey, and the Baltimore Neighborhood Indicator Alliance. Using this data, we will investigate the following hypotheses:
 
 H1: County-level rental values will show a greater increase over time than housing values over the same period
 
@@ -20,8 +22,11 @@ H3: Areas with younger populations will have higher rental values (compared to h
 
 H4: Increases over time in home and rental values will be associated with decreases in the proportion of non-white residents
 
+As we investigate these hypotheses, we will reflect on the challenges and advantages of using a combination of public/open access data sources to explore complex geographic/community-level data
+
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+
 
 library(tidyverse)
 library(readr)
@@ -44,9 +49,15 @@ However, gentrification is not always (perhaps not even usually) strongly associ
 
 #Data
 
+We obtained our data from three main sources: Zillow, the American Community Survey, and the Baltimore Neighborhood Indicator Alliance. Zillow is a large online rental and real estate database company and provides tables of estimated median rent and home values by region and housing type across the U.S. These median home and rent values are calculated “in-house” monthly using Zillow’s universe of housing data. These datasets are publically available and downloadable from Zillow’s website. The American Community Survey (ACS) is an ongoing survey conducted by the U.S. Census Bureau. The survey gathers information on a broad range of demographic, geographic, economic, social, and housing measures. One of the datasets provided by the ACS are one-year estimates of key variables that allow analysis over a series of years.  While the ACS requires an API to access, like Zillow the ACS collects data from all over the U.S. and is publically available. 
 
+Using both the Zillow and the ACS data we are able to link housing and rental prices to demographic and social variables. However, the Census does not publish 1-year estimates for areas with populations less than 65,000. So, while the 1-year estimates are useful in looking at county-level changes, it is insufficient to understanding changes in metropolitan neighborhoods. To understand how demographics in Baltimore neighborhoods have changed over time, we acquired data from Baltimore Neighborhood Indicator Alliance (BNIA). BNIA is a University of Baltimore-run group providing open-access, community-level data for Baltimore City. Freely available on the group’s website is data detailing social and economic characteristics of Baltimore City’s neighborhoods from 2010-2017. Additionally, the group offers geographic crosswalks and shapefiles that allow mapping of these characteristics at neighborhood level.
 
-```{r, import data}
+After obtaining these three datasets, we linked key demographic information to the Zillow dataset. The variables we pulled from the ACS were percentage white, percentage Hispanic, and median age between the years 2010-2018. We linked this data to the Zillow dataset by appropriate year and county in order to answer our research questions about the relationship between housing values and these demographic variables. At the neighborhood level, we linked BNIA data from the years 2010-2017 to neighborhoods described in the Zillow dataset. This was a careful and deliberate process as many neighborhoods were known by multiple names or encompassed other smaller neighborhoods.
+
+In order to visualize our results with geographic maps of the regions analyzed, we linked mapping data to our complete housing and demographic data. The “maps” package in R was used for looking at Maryland at the county level while we obtained shapefiles of Baltimore City from BNIA to look at Baltimore at the neighborhood level. We then used packages such as “ggplot2” to visualize our results at multiple levels including county, metropolitan area, and neighborhood. While we were unable to formally compare different time series at this time, but it is an opportunity for future research to further explore the relationship between housing and demographic values in Maryland and Baltimore.
+
+```{r, import data, results='hide'}
 
 #Zillow data first, from the github repository
 county_hv <- read_csv("https://raw.githubusercontent.com/taliakaatz/surv727project/master/county%20HV.csv")
@@ -111,11 +122,12 @@ count_md10 <- getCensus(name = "2010/acs/acs1/profile",
                       key = cs_key)[-c(1:2)]
 
 
-#BNIA data, also from the guthub repository
+#BNIA geographic crosswalk, also from the guthub repository
 bnia_crosswalk <- read.csv("/Users/taliakaatz/Desktop/Computation & Data Display/Project Folder/CSA_to_NSA_2010.csv")
 
-#demographic data, read in as a separate dataset for each year
-bnia <- "/Users/taliakaatz/Desktop/Computation & Data Display/Project Folder/VS17_Indicators_2010_2017.xlsx"
+#BNIA demographic data, must be downloaded from github
+setwd("/Users/taliakaatz/Desktop/Computation & Data Display/Project Folder/")
+bnia <- "VS17_Indicators_2010_2017.xlsx"
 
 bnia2010 <- read_xlsx(bnia, sheet = "2010")
 bnia2011 <- read_xlsx(bnia, sheet = "2011")
@@ -126,8 +138,8 @@ bnia2015 <- read_xlsx(bnia, sheet = "2015")
 bnia2016 <- read_xlsx(bnia, sheet = "2016")
 bnia2017 <- read_xlsx(bnia, sheet = "2017")
 
-#shapefile for mapping
-bnia_sf <- st_read("/Users/taliakaatz/Desktop/Computation & Data Display/Project Folder/csa_2010_boundaries/CSA_NSA_Tracts.shp")
+#BNIA shapefile for mapping
+bnia_sf <- st_read("csa_2010_boundaries/CSA_NSA_Tracts.shp")
 
 #MD county map data, from 'maps' package
 md_map <- map_data("county", region = "maryland")
@@ -137,7 +149,7 @@ md_map <- map_data("county", region = "maryland")
 
 #Preprocessing
 ##County-level data
-```{r, prepare county-level Zillow files}
+```{r, prepare county-level Zillow files, results='hide'}
 
 RVMD <-
   county_rv %>% 
@@ -158,7 +170,7 @@ HVMD <-
     arrange(RegionName)
 ```
 
-```{r, prepare ACS county data}
+```{r, prepare ACS county data, results='hide'}
 
 
 count_md10$CountyName <- c("Allegany County","Anne Arundel County", "Baltimore County", "Calvert County", "Carroll County", "Cecil County", "Charles County", "Frederick County", "Harford County", "Howard County", "Montgomery County", "Prince George's County", "Saint Mary's County", "Washington County", "Wicomico County", "Baltimore City")
@@ -179,11 +191,9 @@ count_md17$CountyName <- c("Allegany County","Anne Arundel County", "Baltimore C
 
 count_md18$CountyName <- c("Allegany County","Anne Arundel County", "Baltimore County", "Calvert County", "Carroll County", "Cecil County", "Charles County", "Frederick County", "Harford County", "Howard County", "Montgomery County", "Prince George's County", "Saint Mary's County", "Washington County", "Wicomico County", "Baltimore City")
 
-
-
 ```
 
-```{r, write ACS data to new variables in Zillow data files}
+```{r, write ACS data to new variables in Zillow data files, results='hide'}
 HVMD$nonwhite <- NA
 HVMD$hispanic <- NA
 HVMD$medianage <- NA
@@ -302,7 +312,7 @@ combinedMD <-
 ```
 #Preprocessing
 ##Neighborhood-level data 
-```{r, prepare neighborhood-level Zillow data}
+```{r, prepare neighborhood-level Zillow data, results='hide'}
 
 RVBM  <-
   nhood_rv %>% 
@@ -338,7 +348,7 @@ print(home_hoods)
 
 Standardize crosswalk and zillow files and merge by neighborhood
 
-```{r, merge neighborhood crosswalk file to Zillow data}
+```{r, merge neighborhood crosswalk file to Zillow data, results='hide'}
 
 #create uniform neighborhood name variables in each dataset
   
@@ -423,7 +433,7 @@ HVBM %<>%
 
 Prepare BNIA demographic files for merge
 
-```{r, prepare BNIA demographic files}
+```{r, prepare BNIA demographic files, results='hide'}
 
 #in file for each year, subset to variables of interest and rename
 
@@ -496,7 +506,8 @@ bnia2017 %<>%
 
 ```
 
-```{r, merge BNIA to Zillow files}
+```{r, merge BNIA to Zillow files, results='hide'}
+#merge BNIA to Zillow files
 
 RVBM %<>%
   left_join(bnia2010, by = "CSA2010") %>%
@@ -520,8 +531,9 @@ HVBM %<>%
 
 ```
 
-```{r, prepare "long-format" demographic variables}
+```{r, prepare "long-format" demographic variables, results='hide'}
 
+#prepare "long-format" demographic variables
 
 RVBM$nonwhite <- ifelse(RVBM$year == 2010, RVBM$nonwhite10,
                         ifelse(RVBM$year == 2016, RVBM$nonwhite16,
@@ -611,8 +623,10 @@ HVBM %<>%
 ```
 
 #Results
+##Variable Distribution Maps
 
-Maps comparing comparing Baltimore City distributions (across Community Statistical Areas) of different measures of housing values and affordability, as well as age and race distributions. Maps shown are for January 2010 and January 2017.
+The first two maps, of the Zillow home and rent values, primarily indicate where Zillow has missing data -- the east and west areas of the city are sparsely populated, particularly the home value data. The following maps illustrate how this pattern of missingness tends to align with home and rental values, the affordability indices, and the nonwhite proportion of the population. Note that Zillow data is aggregated at the year and CSA level, which may lead to a kind of “bias” in the mapping if housing/rental values are very unevenly distributed across neighborhoods within a given CSA.
+
 
 ```{r}
 
@@ -689,9 +703,14 @@ bnia_sf %>%
 
 ```
 
-Visualizations for H1: County-level rental values will show a greater increase over time than housing values over the same period
+#Results
+##H1: County-level rental values will show a greater increase over time than housing values over the same period
 
-```{r}
+Baltimore City, shaded yellow, has distinctly lower home and rental values over time compared to the suburban and rural counties surrounding it. Interestingly, the county with the highest rents (Anne Arundel) did not have the highest home values (Howard). Notably, the home and rental values show similar patterns over time across counties, and Baltimore City looks similar to the other counties. 
+
+However, when rent and home values are visualized as a ratio of (Rental Value/Home Value in thousands), Baltimore City shows very different change over time compared to other counties, with rent getting more expensive relative to home values until steadying around 2013 and then dropping starting in 2016. The ratio appears to be significantly lower in the other counties, where it remains nearly flat between 2011 and 2019. These results do not provide evidence in support of Hypothesis 1, though they do show that rents are generally higher relative to home values in urban Baltimore than the suburban/rural counties.
+
+```{r, H1 dataviz}
 
 year_breaks <- c("2010-01", "2011-01", "2012-01", "2013-01", "2014-01", "2015-01", "2016-01", "2017-01", "2018-01")
 
@@ -725,9 +744,13 @@ combinedMD %>%
 
 ```
 
-Visualizations for H2: This effect will be more pronounced in urban than in rural counties
+#Results
+##H2: This effect will be more pronounced in urban than in rural counties
 
-```{r}
+Baltimore City can be seen on these maps as a small, square county at roughly (lat -76.5, long 39.3). These maps suggest that Baltimore, the urban center of this metro region, has lower home values and higher rents relative to home values than the surrounding rural and suburban counties do. The results of this visualization lend support to Hypothesis 2. 
+
+
+```{r, H2 dataviz}
 
 #map filling MD counties by average home values in 2017
 combinedMD %>%
@@ -768,9 +791,13 @@ combinedMD %>%
 
 ```
 
-Visualizations for H3: Areas with younger populations will have higher rental values (compared to housing values) than areas with older populations
+#Results
+##H3: Areas with younger populations will have higher rental values (compared to housing values) than areas with older populations
 
-```{r}
+These scatter plots begin to explore a three-way relationship between nonwhite proportions of the population, young adult (18-24) proportions of the population, and home/rental values or affordability. They nonwhite proportion seems to have a stronger relationship with home/rental values and affordability than young adult population does. Predominantly nonwhite communities have better affordability (which is the proportion of the population spending 30% or more of their income on either rent or a mortgage/housing costs), potentially due to lower rents and home values overall. 
+
+
+```{r, H3 dataviz 1}
 #Visualize relationships between age and race make-up of community and average home and rent values in community. Charts created with both Zillow data and BNIA data for comparison purposes. Data for 2016-17
 
 HVBM %>%
@@ -778,7 +805,7 @@ HVBM %>%
   mutate(nw_binary = ifelse(nonwhite <= 50, 0, 1)) %>%
   ggplot() +
   geom_jitter(aes(x = percentya, y = HomeValue/1000 , group = RegionName, color = as.factor(nw_binary))) + ggtitle("Zillow Home Value by Percent of Population 18-24 Years Old") + xlab("Percent of Population 18-24 Years Old") + ylab("Average home value (in thousands)") +
-  scale_color_discrete(name = "Percentage of population nonwhite", labels = c("More than 50% nonwhite", "50% nonwhite or less"))
+  scale_color_discrete(name = "Percentage of population nonwhite", labels = c("50% nonwhite or less", "More than 50% nonwhite"))
 
 
 RVBM %>%
@@ -789,7 +816,7 @@ RVBM %>%
   ggtitle("Zillow Rental Value by Percent of Population 18-24 Years Old") + 
   xlab("Percent of Population 18-24 Years Old") + 
   ylab("Zillow Rental Value") +
-  scale_color_discrete(name = "Percentage of population nonwhite", labels = c("More than 50% nonwhite", "50% nonwhite or less"))
+  scale_color_discrete(name = "Percentage of population nonwhite", labels = c("50% nonwhite or less", "More than 50% nonwhite"))
 
 RVBM %>%
   filter(year %in% c("2016", "2017")) %>%
@@ -799,7 +826,7 @@ RVBM %>%
   ggtitle("Mortgage affordability index by Percent of Population 18-24 Years Old") +
   xlab("Percent of Population 18-24 Years Old") + 
   ylab("Mortgage Affordability Index") +
-  scale_color_discrete(name = "Percentage of population nonwhite", labels = c("More than 50% nonwhite", "50% nonwhite or less"))
+  scale_color_discrete(name = "Percentage of population nonwhite", labels = c("50% nonwhite or less", "More than 50% nonwhite"))
 
 RVBM %>%
   filter(year %in% c("2016", "2017")) %>%
@@ -808,13 +835,90 @@ RVBM %>%
   geom_jitter(aes(x = percentya, y = ai_rent, group = RegionName, color = as.factor(nw_binary))) + 
   ggtitle("Rent Affordability Index by Percent of Population 18-24 Years Old") + xlab("Percent of Population 18-24 Years Old") +
   ylab("Rent Affordability Index") +
-  scale_color_discrete(name = "Percentage of population nonwhite", labels = c("More than 50% nonwhite", "50% nonwhite or less"))
+  scale_color_discrete(name = "Percentage of population nonwhite", labels = c("50% nonwhite or less", "More than 50% nonwhite"))
 
 ```
 
-Visualizations for H4: Increases over time in home and rental values will be associated with decreases in the proportion of non-white residents
+#Results
+##H3 continued
 
-```{r}
+Plotting the data from the ACS reveals that Maryland counties with younger populations generally have lower value homes than those with older populations. This effect is present in the rental values data as well. Looking just at the Baltimore metropolitan area, this trend is even more exaggerated. Moreover, Baltimore City is shown to have a much younger population and much lower average housing values and average rental values than its suburbs. While BNIA did not provide median age for each neighborhood, we can look at the percentage of young people in each neighborhood to understand the relationship between age and price within Baltimore City’s neighborhoods. Within the City itself, prices are relatively uniform, though neighborhoods with fewer young people seem to be more expensive both in terms of housing and in terms of renting (except for a few very expensive neighborhoods looked near private universities).
+
+```{r, H3 dataviz 2}
+HVMD$balt <- as.numeric(HVMD$Metro == "Baltimore-Columbia-Towson")
+RVMD$balt <- as.numeric(RVMD$Metro == "Baltimore-Columbia-Towson")
+
+HVMD %>%
+  ggplot() +
+  geom_jitter(aes(x = medianage, y = HomeValue/1000 , group = RegionName, color = balt))  + geom_smooth(aes(x = medianage, y = HomeValue/1000), method = "loess" , size = 1) + ggtitle("Home Value by Median Age Maryland Counties") + xlab("Median Age") + ylab("Average home value (in thousands)")
+
+RVMD %>%
+  ggplot() +
+  geom_jitter(aes(x = medianage, y = RentalValue , group = RegionName, color = balt)) + geom_smooth(aes(x = medianage, y = RentalValue), method = "loess" , size = 1) + ggtitle("Rental Value by Median Age Maryland Counties") + xlab("Median Age") + ylab("Average rental value")
+
+HVMD %>%
+  filter(Metro == "Baltimore-Columbia-Towson") %>%
+  ggplot() +
+  geom_jitter(aes(x = medianage, y = HomeValue/1000 , group = RegionName, color = RegionName)) + geom_smooth(aes(x = medianage, y = HomeValue/1000), method = "loess" , size = 1) + ggtitle("Home Value by Median Age Baltimore Metro Area") + xlab("Median Age") + ylab("Average home value (in thousands)")
+
+RVMD %>%
+  filter(Metro == "Baltimore-Columbia-Towson") %>%
+  ggplot() +
+  geom_jitter(aes(x = medianage, y = RentalValue , group = RegionName, color = RegionName)) + geom_smooth(aes(x = medianage, y = RentalValue), method = "loess" , size = 1) + ggtitle("Rental Value by Median Age Baltimore Metro Area") + xlab("Median Age") + ylab("Average rental value")
+
+HVBM%>%
+  ggplot() +
+  geom_jitter(aes(x = percentya , y = HomeValue/1000 , group = RegionName)) + geom_smooth(aes(x = percentya, y = HomeValue/1000), method = "loess" , size = 1) + ggtitle("Home Value by Percent 18-24 Baltimore Neighborhoods") + xlab("Percent Young Adult") + ylab("Average home value (in thousands)")
+
+RVBM%>%
+  ggplot() +
+  geom_jitter(aes(x = percentya , y = RentalValue, group = RegionName)) + geom_smooth(aes(x = percentya, y = RentalValue), method = "loess" , size = 1) + ggtitle("Rental Value by Percent 18-24 Baltimore Neighborhoods") + xlab("Percent Young Adult") + ylab("Average rental value")
+
+```
+#Results
+#H4: Increases over time in home and rental values will be associated with decreases in the proportion of non-white residents
+
+When first looking at a plot of all Maryland counties with the available housing and demographic data, it does not appear that there is a clear relationship between percent non-white and home and rental value. However, when looking at the Baltimore Metropolitan area specifically, it becomes very clear that Baltimore City varies dramatically between its surrounding counties, both in terms of demographics and average home and rental values. Baltimore City is significantly less white than the surrounding counties and has much lower housing values. 
+
+To better illustrate this disparity, we can compare housing values in Baltimore City to Baltimore County. Baltimore City is around 70% non-white, while Baltimore County, the location of Baltimore City’s more populous suburbs, is less than 10% non-white—a huge racial gap! While there is a significant gap in home values between Baltimore City and County, the gap appears to have remained constant since 2010. However, not only does is there a similar gap in rental values between Baltimore County and Baltimore City, but the gap seems to have continuously widened. This widening gap in rental prices may serve to make it more difficult for the younger and less white population of Baltimore City to move to areas like Baltimore County. Within Baltimore City itself, this trend is also present and the neighborhoods with the highest home and rental values are much whiter than most of the poorer neighborhoods in the city
+
+```{r, H4 dataviz}
+
+HVMD %>%
+  ggplot() +
+  geom_jitter(aes(x = nonwhite, y = HomeValue/1000 , group = RegionName, color = balt))  + geom_smooth(aes(x = nonwhite, y = HomeValue/1000), method = "loess" , size = 1) + ggtitle("Home Value by Percent Non-White Maryland Counties") + xlab("Percent Non-White") + ylab("Average home value (in thousands)")
+
+RVMD %>%
+  ggplot() +
+  geom_jitter(aes(x = nonwhite, y = RentalValue , group = RegionName, color = balt)) + geom_smooth(aes(x = nonwhite, y = RentalValue), method = "loess" , size = 1) + ggtitle("Rental Value by Percent Non-White Maryland Counties") + xlab("Percent Non-White") + ylab("Average rental value")
+
+HVMD %>%
+  filter(Metro == "Baltimore-Columbia-Towson") %>%
+  ggplot() +
+  geom_jitter(aes(x = nonwhite, y = HomeValue/1000 , group = RegionName, color = RegionName)) + geom_smooth(aes(x = nonwhite, y = HomeValue/1000), method = "loess" , size = 1) + ggtitle("Home Value by Percent Non-White Baltimore Metro Area") + xlab("Percent Non-White") + ylab("Average home value (in thousands)")
+
+RVMD %>%
+  filter(Metro == "Baltimore-Columbia-Towson") %>%
+  ggplot() +
+  geom_jitter(aes(x = nonwhite, y = RentalValue , group = RegionName, color = RegionName)) + geom_smooth(aes(x = nonwhite, y = RentalValue), method = "loess" , size = 1) + ggtitle("Rental Value by Percent Non-White Baltimore Metro Area") + xlab("Median Age") + ylab("Average rental value")
+
+HVMD %>%
+  filter(RegionName == "Baltimore County" |RegionName == "Baltimore City" ) %>%
+  ggplot() +
+  geom_point(aes(x = as.Date(paste(date,"-01",sep="")), y = HomeValue/1000, color = RegionName)) + ggtitle("Home Values in Baltimore")+ xlab("Date") + ylab("Average home value (in thousands)")
+
+RVMD %>%
+  filter(RegionName == "Baltimore County" |RegionName == "Baltimore City" ) %>%
+  ggplot() +
+  geom_point(aes(x = as.Date(paste(date,"-01",sep="")), y = RentalValue, color = RegionName)) + ggtitle("Rental Values in Baltimore")+ xlab("Date") + ylab("Average rental value")
+
+HVBM%>%
+  ggplot() +
+  geom_jitter(aes(x = nonwhite, y = HomeValue/1000 , group = RegionName)) + geom_smooth(aes(x = nonwhite, y = HomeValue/1000), method = "loess" , size = 1) + ggtitle("Home Value by Median Age Baltimore Neighborhoods") + xlab("Percent Non-White") + ylab("Average home value (in thousands)")
+
+RVBM%>%
+  ggplot() +
+  geom_jitter(aes(x = nonwhite, y = RentalValue, group = RegionName)) + geom_smooth(aes(x = nonwhite, y = RentalValue), method = "loess" , size = 1) + ggtitle("Rental Value by Percent Non-White Baltimore Neighborhoods") + xlab("Percent Non-White") + ylab("Average rental value")
 
 ```
 
@@ -828,8 +932,7 @@ Neighborhood names in general proved to be problematic to work with -- in fact, 
 
 Finally, we found it difficult to locate comparable measures to Zillow's home value and median rental value indexes, making it difficult to assess the validity of these measures. We do have some evidence of their validity at least in terms of comparing different geographic areas, as the Zillow data displayed similar trends to the BNIA data when mapped onto Baltimore city by neighborhood/CSA. However, it would not be possible to make a general statement about the validity of these measures based 
 
-This exploration of exploring housing and demographic relationships effectively illustrates the difficulties, limitations, and extra processing burden of working with open access data. However, the Zillow data did allow us to compare market estimates to survey-based estimates, visualize seasonal changes in housing & rental markets, and provided a more direct estimate of rental markets than was available from any of our other data sources.
-
+This exploration of exploring housing and demographic relationships effectively illustrates the difficulties, limitations, and extra processing burden of working with open access data, as well as the advantages. Zillow data allowed us to compare market estimates to survey-based estimates and visualize seasonal and other fine-grain temporal changes in housing & rental markets, and provided a more direct estimate of rental markets than was available from any of our other data sources. 
 
 #References
 
