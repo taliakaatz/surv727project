@@ -952,4 +952,6 @@ Meehan, S., (2019, March 20), Baltimore among nation’s most gentrified cities,
 
 Squires, G. and Kubrin, C., (2005), Privileged Places: Race, Uneven Development, and the Geography of Opportunity in Urban America. Urban Studies, 42.
 
+#Replication Material
 
+All replication material can be found here: https://github.com/taliakaatz/surv727project
