@@ -878,7 +878,7 @@ RVBM%>%
 
 ```
 #Results
-#H4: Increases over time in home and rental values will be associated with decreases in the proportion of non-white residents
+##H4: Increases over time in home and rental values will be associated with decreases in the proportion of non-white residents
 
 When first looking at a plot of all Maryland counties with the available housing and demographic data, it does not appear that there is a clear relationship between percent non-white and home and rental value. However, when looking at the Baltimore Metropolitan area specifically, it becomes very clear that Baltimore City varies dramatically between its surrounding counties, both in terms of demographics and average home and rental values. Baltimore City is significantly less white than the surrounding counties and has much lower housing values. 
 
