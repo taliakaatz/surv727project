@@ -621,18 +621,19 @@ bnia_sf %>%
   left_join(HVBM, by = "CSA2010") %>%
   filter(year == c("2017", "2010")) %>%
   ggplot() +
-    geom_sf(aes(fill = HomeValue)) +
+    geom_sf(aes(fill = (HomeValue/1000))) +
+    ggtitle("Zillow Home Value by CSA in Baltimore City, 2010 and 2017") +
+    scale_fill_continuous(name = "Zillow home value (in thousands)") + 
     facet_wrap(~year)
 
-```
-
-```{r}
 bnia_sf %>%
   mutate(CSA2010 = Community) %>%
   left_join(RVBM, by = "CSA2010") %>%
   filter(year == c("2017", "2010")) %>%
   ggplot() +
     geom_sf(aes(fill = RentalValue)) +
+    ggtitle("Zillow Rental Value by CSA in Baltimore City, 2010 and 2017") +
+    scale_fill_continuous(name = "Zillow rental value") +
     facet_wrap(~year)
 
 bnia_sf %>%
@@ -641,6 +642,8 @@ bnia_sf %>%
   filter(year == c("2017", "2010")) %>%
   ggplot() +
     geom_sf(aes(fill = mediansold)) +
+    ggtitle("Median Price of Homes Sold by CSA in Baltimore City, 2010 and 2017") +
+    scale_fill_continuous(name = "Median price of homes sold") +
     facet_wrap(~year)
 
 bnia_sf %>%
@@ -649,6 +652,8 @@ bnia_sf %>%
   filter(year == c("2017", "2010")) %>%
   ggplot() +
     geom_sf(aes(fill = ai_mortgage)) +
+    ggtitle("Mortgage Afordability Index by CSA in Baltimore City, 2010 and 2017") +
+    scale_fill_continuous(name = "Mortgage Affordability Index") +
     facet_wrap(~year)
 
 bnia_sf %>%
@@ -657,6 +662,8 @@ bnia_sf %>%
   filter(year == c("2017", "2010")) %>%
   ggplot() +
     geom_sf(aes(fill = ai_rent)) +
+    ggtitle("Rent Afordability Index by CSA in Baltimore City, 2010 and 2017") +
+    scale_fill_continuous(name = "Rent Afordability Index") +
     facet_wrap(~year)
 
 bnia_sf %>%
@@ -665,6 +672,8 @@ bnia_sf %>%
   filter(year == c("2017", "2010")) %>%
   ggplot() +
     geom_sf(aes(fill = percentya)) +
+    ggtitle("Percent of population age 18-24 by CSA in Baltimore City, 2010 and 2017") +
+    scale_fill_continuous(name = "Percent of population age 18-24") +
     facet_wrap(~year)
 
 bnia_sf %>%
@@ -673,6 +682,8 @@ bnia_sf %>%
   filter(year == c("2017", "2010")) %>%
   ggplot() +
     geom_sf(aes(fill = nonwhite)) +
+    ggtitle("Percent of population that is nonwhite by CSA in Baltimore City, 2010 and 2017") +
+    scale_fill_continuous(name = "Percent of population that is nonwhite") +
     facet_wrap(~year)
 
 
@@ -685,21 +696,13 @@ Visualizations for H1: County-level rental values will show a greater increase o
 year_breaks <- c("2010-01", "2011-01", "2012-01", "2013-01", "2014-01", "2015-01", "2016-01", "2017-01", "2018-01")
 
 combinedMD %>%
-  mutate(hrv_ratio = (RentalValue/(HomeValue/1000))) %>%
-  filter(Metro.x %in% "Baltimore-Columbia-Towson") %>%
-  ggplot() +
-  geom_jitter(aes(x = date, y = hrv_ratio , group = RegionName, color = RegionName)) + 
-  ggtitle("Change in Rental-to-Homevalue Ratio Over Time in Baltimore Metro") + 
-  scale_x_discrete("Date", c('2010', year_breaks, year_breaks)) + 
-  ylab("Ratio of rental values to home values")
-
-combinedMD %>%
   filter(Metro.x %in% "Baltimore-Columbia-Towson") %>%
   ggplot() +
   geom_jitter(aes(x = date, y = RentalValue , group = RegionName, color = RegionName)) + 
   ggtitle("Rental Values Over Time in Baltimore Metro") + 
   scale_x_discrete("Date", c('2010', year_breaks, year_breaks)) + 
-  ylab("Average rental Values (monthly rent in $)")
+  ylab("Average rental Values (monthly rent in $)") +
+  scale_color_discrete("County")
 
 combinedMD %>%
   filter(Metro.x %in% "Baltimore-Columbia-Towson") %>%
@@ -707,7 +710,18 @@ combinedMD %>%
   geom_jitter(aes(x = date, y = (HomeValue/1000) , group = RegionName, color = RegionName)) + 
   ggtitle("Home Values Ratio Over Time in Baltimore Metro") + 
   scale_x_discrete("Date", c('2010', year_breaks, year_breaks)) + 
-  ylab("Average home value (in thousands)")
+  ylab("Average home value (in thousands)") +
+  scale_color_discrete("County")
+
+combinedMD %>%
+  mutate(hrv_ratio = (RentalValue/(HomeValue/1000))) %>%
+  filter(Metro.x %in% "Baltimore-Columbia-Towson") %>%
+  ggplot() +
+  geom_jitter(aes(x = date, y = hrv_ratio , group = RegionName, color = RegionName)) + 
+  ggtitle("Change in Rental-to-Homevalue Ratio Over Time in Baltimore Metro") + 
+  scale_x_discrete("Date", c('2010', year_breaks, year_breaks)) + 
+  ylab("Ratio of rental values to home values") +
+  scale_color_discrete("County")
 
 ```
 
@@ -715,33 +729,43 @@ Visualizations for H2: This effect will be more pronounced in urban than in rura
 
 ```{r}
 
-#map filling MD counties by average rental values in 2017
-HVMD %>%
-    left_join(RVMD, by = c("RegionName", "date")) %>%
-    mutate(hrv_ratio = (RentalValue/(HomeValue/1000))) %>%
+#map filling MD counties by average home values in 2017
+combinedMD %>%
     mutate(subregion = gsub(" County", "", RegionName)) %>%
     mutate(subregion = tolower(subregion)) %>%
     right_join(md_map, by = "subregion") %>%
-    filter(date %in% c("2018-12", "2015-12")) %>%
+    filter(year.x %in% c("2011", "2017")) %>%
     ggplot() + 
-      geom_polygon(aes(x = long, y = lat, group = subregion, fill = hrv_ratio)) +
-      facet_wrap(~date, scale = "free") +
-      ggtitle("MD Rental-to-HomeValue Ratios in Dec. 2015 and Dec. 2018") +
-      scale_fill_continuous(name = "RTHV Ratio")
+      geom_polygon(aes(x = long, y = lat, group = subregion, fill = (HomeValue/1000))) +
+      facet_wrap(~year.x, scale = "free") +
+      ggtitle("Zillow Home Values (in thousands) in 2011 and 2017") +
+      scale_fill_continuous(name = "Zillow Home Value (in thousands)")
 
-#map filling MD counties by average rental values in 2017
-HVMD %>%
-    left_join(RVMD, by = c("RegionName", "date")) %>%
+#map filling MD counties by average rental values in 2011
+combinedMD %>%
+    mutate(subregion = gsub(" County", "", RegionName)) %>%
+    mutate(subregion = tolower(subregion)) %>%
+    right_join(md_map, by = "subregion") %>%
+    filter(year.x %in% c("2011", "2017")) %>%
+    ggplot() + 
+      geom_polygon(aes(x = long, y = lat, group = subregion, fill = RentalValue)) +
+      facet_wrap(~year.x, scale = "free") +
+      ggtitle("Zillow Rental Values in 2011 and 2017") +
+      scale_fill_continuous(name = "Zillow Rental Value")
+
+#map filling MD counties by average rental values in 2011
+combinedMD %>%
     mutate(hrv_ratio = (RentalValue/(HomeValue/1000))) %>%
     mutate(subregion = gsub(" County", "", RegionName)) %>%
     mutate(subregion = tolower(subregion)) %>%
     right_join(md_map, by = "subregion") %>%
-    filter(date %in% c("2018-12", "2015-12")) %>%
+    filter(year.x %in% c("2011", "2017")) %>%
     ggplot() + 
       geom_polygon(aes(x = long, y = lat, group = subregion, fill = hrv_ratio)) +
-      facet_wrap(~date, scale = "free") +
-      ggtitle("MD Rental-to-HomeValue Ratios in Dec. 2015 and Dec. 2018") +
-      scale_fill_continuous(name = "RTHV Ratio")
+      facet_wrap(~year.x, scale = "free") +
+      ggtitle("MD Rental-to-HomeValue Ratios in 2011 and Dec. 2017") +
+      scale_fill_continuous(name = "RtHV Ratio")
+
 ```
 
 Visualizations for H3: Areas with younger populations will have higher rental values (compared to housing values) than areas with older populations
@@ -796,7 +820,7 @@ Visualizations for H4: Increases over time in home and rental values will be ass
 
 #Discussion
 
-While Zillow's housing data proved useful for mapping at the state/county level, and showed similar distributions across communities to the BNIA data, there were a number of disadvantages to working with this data. There were many missing values that could interrupt trend lines and produced blank areas when mapping -- in particular this is visible in the map of HousingValue during 2010, where the lower-income, less-white portions of the city are largely missing. This suggests that the potential for bias in the Zillow data may increase the further back the data goes -- this makes sense, as one would expect their database to become more robust over time, as use of the site has increased and techniques for data mining have improved.
+While Zillow's housing data proved useful for mapping at the state/county level, and showed similar distributions across communities to the BNIA data, there were a number of disadvantages to working with this data. There were many missing values that could interrupt trend lines and produced blank areas when mapping -- in particular this is visible in the map of HousingValue during 2010, where the lower-home value, less-white portions of the city are largely missing. This suggests that the potential for bias in the Zillow data may increase the further back the data goes -- this makes sense, as one would expect their database to become more robust over time, as use of the site has increased and techniques for data mining have improved.
 
 Another major issue we encountered with the Zillow datasets is the lack of standardized geographic identifiers for merging with other data and mapping at meaningful community levels -- Zillow data had to be merged to both ACS and BNIA data by county or neighborhood name, and these text-based identifiers proved to be significantly more labor-intensive to preprocess. Zillow's neighborhood names also had significant alignment issues with the only publicly-available Baltimore neighborhood shapefile, leading to large blank areas when mapping was attempted.
 
